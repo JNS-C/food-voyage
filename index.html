@@ -140,6 +140,10 @@
     <circle cx="10.8" cy="10.8" r="6.8"/>
     <path d="M20 20l-4.4-4.4"/>
   </symbol>
+  <symbol id="icon-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M9.5 5l7 7-7 7"/>
+  </symbol>
 </svg>
 
 
@@ -203,8 +207,26 @@
 <section class="bg-deep text-on-dark">
   <div class="mx-auto max-w-content p-10 xs:p-12 sm:p-16 lg:p-20">
 
-    <h2 class="text-hero-2 font-semibold sm:text-section">최근 항해일지</h2>
-    <p class="mt-4 text-caption text-on-dark-muted">다른 사람이 남긴 기록입니다.</p>
+    <div class="flex items-end justify-between gap-6">
+      <div>
+        <h2 class="text-hero-2 font-semibold sm:text-section">최근 항해일지</h2>
+        <p class="mt-4 text-caption text-on-dark-muted">다른 사람이 남긴 기록입니다.</p>
+      </div>
+
+      <!-- 모바일은 스와이프로 넘긴다. 포인터 환경에는 넘길 수단이 없으므로 버튼을 둔다. -->
+      <div id="log-controls" class="hidden shrink-0 gap-2 sm:flex">
+        <button id="log-prev" type="button" aria-label="이전 항해일지"
+                aria-controls="log-scroller"
+                class="press flex h-11 w-11 items-center justify-center rounded-full border border-on-dark/10 bg-deep-2 text-accent-on-dark transition duration-200 hover:bg-deep-3 disabled:cursor-default disabled:opacity-30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-on-dark">
+          <svg class="h-5 w-5 rotate-180" aria-hidden="true"><use href="#icon-chevron"/></svg>
+        </button>
+        <button id="log-next" type="button" aria-label="다음 항해일지"
+                aria-controls="log-scroller"
+                class="press flex h-11 w-11 items-center justify-center rounded-full border border-on-dark/10 bg-deep-2 text-accent-on-dark transition duration-200 hover:bg-deep-3 disabled:cursor-default disabled:opacity-30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-on-dark">
+          <svg class="h-5 w-5" aria-hidden="true"><use href="#icon-chevron"/></svg>
+        </button>
+      </div>
+    </div>
 
     <!-- 스크롤러를 타일 밖으로 흘리지 않는다. 컨테이너 안에 두어야 위 섹션의
          카드 그리드와 좌측 시작선이 정확히 맞고, 카드가 잘려 보이지 않는다. -->

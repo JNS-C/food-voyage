@@ -1,5 +1,5 @@
 ---
-version: alpha.4
+version: alpha.5
 name: food-voyage-design
 description: 크림 양피지 위에 놓인 항해일지를, 애플의 진열 방식으로 전시하는 인터페이스. 밝은 크림 타일과 딥 네이비 타일이 전면으로 교차하며 색 변화 자체가 섹션 구분선이 된다. 서체는 Pretendard 하나이고 위계는 크기와 굵기로만 만든다. 인터랙션 색은 황동 하나뿐이고, 그림자는 음식 사진에만 허용된다. 재방문율은 별이 아니라 닻으로 표기한다.
 
@@ -207,6 +207,11 @@ components:
     typography: "{typography.card-title}"
     rounded: "{rounded.lg}"
     padding: 24px
+  carousel-nav:
+    backgroundColor: "{colors.surface-deep-2}"
+    textColor: "{colors.accent-on-dark}"
+    rounded: "{rounded.pill}"
+    size: 44px
   badge-coming-soon:
     backgroundColor: "{colors.divider-soft}"
     textColor: "{colors.ink-muted-48}"
@@ -423,6 +428,18 @@ placeholder는 **동네 이름**이다. `정발산역`. 가게명이 아니다. 
 
 구성은 제목 `{typography.card-title}` → 설명 `{typography.body}` → `{component.badge-coming-soon}`. 누를 수 없는 요소이므로 `<div>`로 두고 호버 반응을 넣지 않는다.
 
+### Carousel Nav
+
+**`carousel-nav`** — 가로 스크롤러를 한 장씩 넘기는 좌우 버튼. 44×44px 원형, 배경 `{colors.surface-deep-2}`, 글리프 `{colors.accent-on-dark}`, 테두리 1px `{colors.on-dark}` 10%. `{component.quote-log}` 카드와 같은 면·같은 테두리를 써서 한 벌로 읽히게 한다.
+
+**터치 환경에는 표시하지 않는다.** 스와이프로 넘어가는데 버튼까지 두면 크롬만 늘어난다. 반대로 **포인터 환경에는 반드시 둔다** — 스크롤바를 숨겨 놓았으므로 버튼이 없으면 넘길 방법이 아예 없다.
+
+섹션 제목 오른쪽 끝에 둔다. 카드 위에 겹쳐 올리지 않는다. 인용문을 가리는 순간 읽기가 방해된다.
+
+**상태를 정직하게 표시한다.** 양 끝에 닿으면 해당 버튼을 `disabled`로 두고 투명도 30%로 낮춘다. 넘길 카드가 없으면(콘텐츠가 스크롤러에 다 들어오면) 버튼 묶음 자체를 감춘다. 눌러도 아무 일이 없는 버튼을 남겨 두지 않는다.
+
+이동 폭은 **카드 실측 폭 + 간격**이다. 브레이크포인트마다 카드 폭이 달라지므로 상수로 박지 않는다.
+
 ### Badge & Toast
 
 **`badge-coming-soon`** — 아직 없는 기능 표시. 배경 `{colors.divider-soft}`, 텍스트 `{colors.ink-muted-48}`, `{rounded.pill}`, 패딩 6px × 12px. 황동을 쓰지 않는다. 누를 수 없는 것에 인터랙션 색을 쓰면 신호가 오염된다.
@@ -489,6 +506,7 @@ placeholder는 **동네 이름**이다. `정발산역`. 가게명이 아니다. 
 - 히어로 검색창: 데스크탑에서 버튼과 가로 배치, 모바일에서 세로 적층 후 전체 폭
 - 최근 항해일지: 데스크탑·모바일 모두 가로 스크롤 유지. **모바일에서는 카드 폭이 스크롤러를 꽉 채워 한 번에 한 편만 보인다.** 옆 카드를 살짝 걸치게 두지 않는다 — 위 카드 그리드와 좌측 시작선이 어긋나고, 잘린 카드가 화면을 침범해 읽기를 방해한다.
 - 가로 스크롤러를 타일 밖으로 흘리지 않는다. 섹션 컨테이너 안에 두어야 다른 섹션의 카드와 시작선이 맞는다.
+- 가로 스크롤러에는 **`{component.carousel-nav}`를 반드시 짝지운다.** 640px 이상에서만 보이며, 그 아래는 스와이프가 대신한다.
 - 섹션 패딩: 80px → 64px → 48px → 40px
 
 ### 이미지
@@ -548,6 +566,7 @@ placeholder는 **동네 이름**이다. `정발산역`. 가게명이 아니다. 
 | 버전 | 날짜 | 내용 |
 |---|---|---|
 | alpha | 2026-08-14 | 최초 작성 |
+| alpha.5 | 2026-08-14 | **`carousel-nav` 신설** — 가로 스크롤러의 좌우 넘김 버튼. 스크롤바를 숨긴 탓에 포인터 환경에서 항해일지를 넘길 방법이 없던 문제를 해결한다. 640px 이상에서만 노출하고, 양 끝에서 `disabled`, 넘길 것이 없으면 숨긴다. 이동 폭은 카드 실측값 + 간격. |
 | alpha.4 | 2026-08-14 | 히어로 **워드마크만** Noto Serif KR 600으로 되돌리고 `{typography.wordmark}` 토큰 신설. Tailwind 키를 `serif`가 아니라 `wordmark`로 두어 로고 밖으로 번지지 않게 잠갔다. 모바일 항해일지 접힘 규칙 변경 — 카드 폭 85vw(옆 카드 살짝 보이기)를 **스크롤러 꽉 채우기**로. 85vw가 콘텐츠 폭보다 넓어 위 카드 그리드와 시작선이 어긋나고 옆 카드가 화면을 침범했다. 가로 스크롤러를 타일 밖으로 흘리지 않는다는 규칙도 추가. |
 | alpha.3 | 2026-08-14 | **명조(Noto Serif KR)를 제거하고 서체를 Pretendard 하나로 통일.** Apple SD Gothic Neo도 스택에서 뺐다 — 기기마다 다른 서체가 나오면 인상이 갈린다. 타이포 토큰의 `-serif` 접미사를 `hero-display`·`section-display`·`card-title`·`quote`로 정리. 크기값(57/41/21/25)은 유지한다. `quote-log`를 투명 배경에서 **카드**로 변경 — `surface-deep-2` 면 + 18px 라운드 + 24px 패딩 + `on-dark` 10% 테두리. 일지끼리 경계가 없어 한 편의 범위가 읽히지 않는 문제를 해결한다. **Motion 절 신설** — 스크롤 등장·퇴장(양방향, 700ms)을 정의. 원래 8/19~20 예정이었으나 앞당겼다. |
 | alpha.2 | 2026-08-14 | `anchor-rating`을 집계형(닻 5개)·단일형(닻 1개)으로 분리하고 3상태 데이터 모델 명시. `quote-log`에 작성자 표기 추가 (읽기 공개 정책의 시각적 근거). `card-feature` 컴포넌트 신설 — 화이트 타일 위 크림 카드. `card-place-mock` 색면에 그림자 금지 명시. 검색 placeholder를 `정발산역`으로 변경. Pretendard CDN 버전 태그 고정. Do's and Don'ts 5건 추가. Known Gaps에서 닻 글리프 항목 해소. |

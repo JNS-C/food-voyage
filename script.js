@@ -205,6 +205,53 @@ function showToast(message) {
   }, 3000);
 }
 
+/* ── 항해일지 넘기기 ────────────────────────────────── */
+
+/**
+ * 가로 스크롤러는 터치에서는 스와이프로 넘어가지만 마우스 환경에는 조작 수단이
+ * 없다. 스크롤바를 숨겨 뒀으니 더더욱 그렇다. 좌우 버튼으로 한 장씩 넘긴다.
+ *
+ * 이동 폭은 카드 실측값 + 간격이다. 브레이크포인트마다 카드 폭이 달라지므로
+ * 상수로 박지 않는다.
+ */
+function initLogControls() {
+  const scroller = document.getElementById('log-scroller');
+  const controls = document.getElementById('log-controls');
+  const prev = document.getElementById('log-prev');
+  const next = document.getElementById('log-next');
+  if (!scroller || !controls || !prev || !next) return;
+
+  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function step() {
+    const card = scroller.firstElementChild;
+    if (!card) return scroller.clientWidth;
+    const gap = parseFloat(getComputedStyle(scroller).columnGap) || 0;
+    return card.getBoundingClientRect().width + gap;
+  }
+
+  function scrollByCard(direction) {
+    scroller.scrollBy({
+      left: step() * direction,
+      behavior: prefersReducedMotion ? 'auto' : 'smooth',
+    });
+  }
+
+  /** 끝에 닿으면 버튼을 죽인다. 넘길 게 없으면 버튼 자체를 숨긴다. */
+  function syncControls() {
+    const overflow = scroller.scrollWidth - scroller.clientWidth;
+    controls.style.display = overflow > 1 ? '' : 'none';
+    prev.disabled = scroller.scrollLeft <= 1;
+    next.disabled = scroller.scrollLeft >= overflow - 1;
+  }
+
+  prev.addEventListener('click', () => scrollByCard(-1));
+  next.addEventListener('click', () => scrollByCard(1));
+  scroller.addEventListener('scroll', syncControls, { passive: true });
+  window.addEventListener('resize', syncControls);
+  syncControls();
+}
+
 /* ── 스크롤 등장·퇴장 ───────────────────────────────── */
 
 /**
@@ -261,4 +308,5 @@ renderRestaurants();
 renderLogs();
 renderFeatures();
 bindFakeActions();
+initLogControls();
 initScrollReveal();
