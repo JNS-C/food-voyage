@@ -141,3 +141,77 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# ─────────────────────────────────────────────
+# food-voyage 프로젝트 추가분
+# ─────────────────────────────────────────────
+
+# 배포 (Vercel)
+.vercel
+.vercel/
+
+# Supabase (8/24 인증·DB)
+.supabase/
+supabase/.branches
+supabase/.temp
+supabase/.env
+
+# API 키 · 인증서 (PRD §8 "API 키를 커밋하지 않는다")
+*.pem
+*.key
+*.p12
+secrets.json
+service-account*.json
+gemini-key*
+.env.local
+.env.development.local
+.env.production.local
+
+# OS — Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+desktop.ini
+$RECYCLE.BIN/
+*.lnk
+*.stackdump
+
+# OS — macOS
+.DS_Store
+.DS_Store?
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# 에디터 · IDE
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.iml
+*.swp
+*.swo
+*~
+*.sublime-workspace
+*.sublime-project
+
+# Claude Code 로컬 설정 (공유 설정은 커밋)
+.claude/settings.local.json
+
+# 임시 · 작업 파일
+*.tmp
+*.bak
+*.orig
+*.rej
+.scratch/
+scratchpad/
+
+# 디자인 원본 (레포에 두지 않음)
+*.psd
+*.ai
+*.sketch
+*.fig
