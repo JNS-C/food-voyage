@@ -1,7 +1,7 @@
 ---
-version: alpha
+version: alpha.3
 name: food-voyage-design
-description: 크림 양피지 위에 놓인 항해일지를, 애플의 진열 방식으로 전시하는 인터페이스. 밝은 크림 타일과 딥 네이비 타일이 전면으로 교차하며 색 변화 자체가 섹션 구분선이 된다. 제목은 명조, 본문은 산세리프 17px. 인터랙션 색은 황동 하나뿐이고, 그림자는 음식 사진에만 허용된다. 재방문율은 별이 아니라 닻으로 표기한다.
+description: 크림 양피지 위에 놓인 항해일지를, 애플의 진열 방식으로 전시하는 인터페이스. 밝은 크림 타일과 딥 네이비 타일이 전면으로 교차하며 색 변화 자체가 섹션 구분선이 된다. 서체는 Pretendard 하나이고 위계는 크기와 굵기로만 만든다. 인터랙션 색은 황동 하나뿐이고, 그림자는 음식 사진에만 허용된다. 재방문율은 별이 아니라 닻으로 표기한다.
 
 colors:
   accent: "#B86B32"
@@ -24,86 +24,86 @@ colors:
   on-accent: "#FFFFFF"
 
 typography:
-  hero-serif:
-    fontFamily: "Noto Serif KR, serif"
+  hero-display:
+    fontFamily: "Pretendard Variable, Pretendard, sans-serif"
     fontSize: 57px
     fontWeight: 600
     lineHeight: 1.25
     letterSpacing: -0.5px
-  section-serif:
-    fontFamily: "Noto Serif KR, serif"
+  section-display:
+    fontFamily: "Pretendard Variable, Pretendard, sans-serif"
     fontSize: 41px
     fontWeight: 600
     lineHeight: 1.3
     letterSpacing: -0.4px
-  card-title-serif:
-    fontFamily: "Noto Serif KR, serif"
+  card-title:
+    fontFamily: "Pretendard Variable, Pretendard, sans-serif"
     fontSize: 21px
     fontWeight: 600
     lineHeight: 1.4
     letterSpacing: -0.2px
-  quote-serif:
-    fontFamily: "Noto Serif KR, serif"
+  quote:
+    fontFamily: "Pretendard Variable, Pretendard, sans-serif"
     fontSize: 25px
     fontWeight: 400
     lineHeight: 1.7
     letterSpacing: -0.2px
   quote-mark:
-    fontFamily: "Noto Serif KR, serif"
+    fontFamily: "Pretendard Variable, Pretendard, sans-serif"
     fontSize: 48px
     fontWeight: 600
     lineHeight: 1.0
     letterSpacing: 0
   lead:
-    fontFamily: "Apple SD Gothic Neo, Pretendard, sans-serif"
+    fontFamily: "Pretendard Variable, Pretendard, sans-serif"
     fontSize: 24px
     fontWeight: 400
     lineHeight: 1.5
     letterSpacing: -0.2px
   body:
-    fontFamily: "Apple SD Gothic Neo, Pretendard, sans-serif"
+    fontFamily: "Pretendard Variable, Pretendard, sans-serif"
     fontSize: 17px
     fontWeight: 400
     lineHeight: 1.47
     letterSpacing: -0.2px
   body-strong:
-    fontFamily: "Apple SD Gothic Neo, Pretendard, sans-serif"
+    fontFamily: "Pretendard Variable, Pretendard, sans-serif"
     fontSize: 17px
     fontWeight: 600
     lineHeight: 1.47
     letterSpacing: -0.2px
   button:
-    fontFamily: "Apple SD Gothic Neo, Pretendard, sans-serif"
+    fontFamily: "Pretendard Variable, Pretendard, sans-serif"
     fontSize: 17px
     fontWeight: 400
     lineHeight: 1.0
     letterSpacing: -0.2px
   caption:
-    fontFamily: "Apple SD Gothic Neo, Pretendard, sans-serif"
+    fontFamily: "Pretendard Variable, Pretendard, sans-serif"
     fontSize: 14px
     fontWeight: 400
     lineHeight: 1.5
     letterSpacing: -0.1px
   caption-strong:
-    fontFamily: "Apple SD Gothic Neo, Pretendard, sans-serif"
+    fontFamily: "Pretendard Variable, Pretendard, sans-serif"
     fontSize: 14px
     fontWeight: 600
     lineHeight: 1.35
     letterSpacing: -0.1px
   ratio-number:
-    fontFamily: "Apple SD Gothic Neo, Pretendard, sans-serif"
+    fontFamily: "Pretendard Variable, Pretendard, sans-serif"
     fontSize: 14px
     fontWeight: 600
     lineHeight: 1.0
     letterSpacing: 0
   nav-link:
-    fontFamily: "Apple SD Gothic Neo, Pretendard, sans-serif"
+    fontFamily: "Pretendard Variable, Pretendard, sans-serif"
     fontSize: 14px
     fontWeight: 400
     lineHeight: 1.29
     letterSpacing: -0.1px
   fine-print:
-    fontFamily: "Apple SD Gothic Neo, Pretendard, sans-serif"
+    fontFamily: "Pretendard Variable, Pretendard, sans-serif"
     fontSize: 12px
     fontWeight: 400
     lineHeight: 1.4
@@ -178,7 +178,7 @@ components:
   card-place:
     backgroundColor: "{colors.canvas-white}"
     textColor: "{colors.ink}"
-    typography: "{typography.card-title-serif}"
+    typography: "{typography.card-title}"
     rounded: "{rounded.lg}"
     padding: 20px
   card-place-mock:
@@ -190,13 +190,15 @@ components:
     textColor: "{colors.accent}"
     typography: "{typography.ratio-number}"
   quote-log:
-    backgroundColor: transparent
+    backgroundColor: "{colors.surface-deep-2}"
     textColor: "{colors.on-dark}"
-    typography: "{typography.quote-serif}"
+    typography: "{typography.quote}"
+    rounded: "{rounded.lg}"
+    padding: 24px
   card-feature:
     backgroundColor: "{colors.canvas-cream}"
     textColor: "{colors.ink}"
-    typography: "{typography.card-title-serif}"
+    typography: "{typography.card-title}"
     rounded: "{rounded.lg}"
     padding: 24px
   badge-coming-soon:
@@ -235,7 +237,7 @@ food-voyage는 **크림 양피지 위에 놓인 항해일지를 애플의 진열
 
 - 전면 타일 교차: 크림 ↔ 딥 네이비. 색 변화가 섹션 구분선이다.
 - 인터랙션 색은 황동 `#B86B32` 하나. 두 번째 강조색은 존재하지 않는다.
-- 제목은 명조(Noto Serif KR), 본문은 산세리프 17px. 기준은 **"읽는 글은 산세리프, 보여지는 글은 명조."**
+- **서체는 Pretendard 하나다.** 위계는 서체를 바꿔서가 아니라 크기와 굵기(400/600)로만 만든다. 본문은 17px.
 - 재방문율을 별이 아니라 **닻**으로 표기한다. 이 서비스의 시각적 서명이다. 집계값은 닻 5개 + 비율 숫자, 개인 기록 한 편은 닻 1개 + 라벨.
 - **별점은 존재하지 않는다.** 평가는 재방문 3상태(`yes` / `once` / `maybe`)가 대신한다.
 - 카드는 사진이 주인공(4:3), 정보는 이름·동네·닻 세 가지로 끝낸다.
@@ -281,36 +283,36 @@ food-voyage는 **크림 양피지 위에 놓인 항해일지를 애플의 진열
 
 ```html
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600&display=swap">
 ```
 
 **CDN 경로에 버전 태그를 반드시 붙인다.** 태그 없이 `gh/orioncactus/pretendard/`로 쓰면 기본 브랜치를 가리키게 되어, 업스트림이 경로를 바꾸면 폰트가 통째로 빠진다. 위 `@v1.3.9`가 실제 존재하는 태그인지 브라우저에서 한 번 열어 확인하고, 없으면 최신 태그로 교체한다.
 
-### 서체 역할
+### 서체는 하나다
 
-| 용도 | 서체 |
-|---|---|
-| 본문·버튼·라벨·입력창 | `Apple SD Gothic Neo` → `Pretendard` → `sans-serif` |
-| 섹션 제목·히어로·카드 이름·인용문 | `Noto Serif KR` |
+```
+Pretendard Variable → Pretendard → sans-serif
+```
 
-**Apple SD Gothic Neo는 웹폰트로 배포할 수 없다.** 애플이 산돌과 만든 시스템 탑재 폰트이므로 서버에 올리지 않는다. 폰트 스택 앞단에만 두어 애플 기기는 로컬 폰트를, 그 외 환경은 Pretendard 웹폰트를 쓰게 한다. Pretendard는 애초에 Apple SD Gothic Neo를 비애플 환경에서 재현하려고 만들어진 서체라 두 환경의 인상이 유지된다.
+**모든 텍스트가 Pretendard다.** 제목·본문·버튼·인용문에 예외가 없다.
+
+`Apple SD Gothic Neo`를 스택 앞단에 두지 않는다. 애플 기기에서만 다른 서체가 나와 화면 인상이 갈리기 때문이다. 마지막 `sans-serif`는 CDN이 죽었을 때만 쓰이는 최후 수단이며, 정상 상태에서는 도달하지 않는다.
 
 ### 판단 기준
 
-> **읽는 글은 산세리프, 보여지는 글은 명조.**
+> **서체를 바꾸지 말고 크기와 굵기를 바꾼다.**
 
-긴 리뷰 본문·버튼·라벨·입력창·메타 정보는 산세리프. 섹션 제목·히어로·카드 이름·한 줄 인용은 명조. 새 화면을 만들 때 이 한 줄로 판단한다.
+위계가 필요하면 px를 올리거나 400 → 600으로 간다. 두 번째 서체를 도입하지 않는다. 강조색이 황동 하나뿐인 것과 같은 이유다 — 축이 하나여야 그 축이 읽힌다.
 
 ### 크기 규칙
 
 - 본문은 `{typography.body}` 17px다. 16px가 아니다. 애플 시스템의 읽기 속도를 정의하는 값이며 리뷰가 많이 보이는 서비스에 유리하다.
-- **명조 텍스트는 산세리프보다 +1px 보정한다.** 같은 px에서 명조가 더 작아 보인다. 그래서 히어로가 56이 아니라 57px, 섹션 제목이 40이 아니라 41px이다.
-- 자간은 한글 기준으로 완화한다. 애플의 -0.374px는 로마자 기준이며, 한글에 그대로 적용하면 답답해진다. 본문 `-0.2px`, 명조 제목 `-0.4 ~ -0.5px`.
+- 히어로 57 / 섹션 41 / 카드 이름 21 / 인용 25px. 원래 명조의 시각 보정으로 잡힌 홀수값인데, 서체가 바뀐 뒤에도 그대로 쓴다. 1px을 되돌려 얻을 시각적 이득이 없고 토큰만 흔들린다.
+- 자간은 한글 기준으로 완화한다. 애플의 -0.374px는 로마자 기준이며, 한글에 그대로 적용하면 답답해진다. 본문 `-0.2px`, 큰 제목 `-0.4 ~ -0.5px`.
 - 굵기 사다리는 `400 / 600`만 쓴다. 500은 쓰지 않는다.
 
 ### 이탤릭 금지
 
-**한글에는 이탤릭이 없다.** `font-style: italic`을 걸면 브라우저가 합성 오블리크를 만들어 세로획이 사선이 되고 명조의 부리·맺음이 뭉개진다. 인용문은 기울이지 않고 여는 따옴표로 구분한다.
+**한글에는 이탤릭이 없다.** `font-style: italic`을 걸면 브라우저가 합성 오블리크를 만들어 세로획이 사선으로 눕고 글자가 뭉개진다. 인용문은 기울이지 않고 여는 따옴표로 구분한다.
 
 ---
 
@@ -336,7 +338,7 @@ placeholder는 **동네 이름**이다. `정발산역`. 가게명이 아니다. 
 
 **`card-place`** — 맛집 카드. 배경 `{colors.canvas-white}`, 1px `{colors.hairline}` 테두리, `{rounded.lg}` 18px, 패딩 20px.
 
-구성은 위에서부터 ① **4:3 사진** (`{rounded.md}` 12px, `{shadow.photo}`) → ② **가게명** `{typography.card-title-serif}` → ③ **동네 칩** `{component.chip-neighborhood}` → ④ **`{component.anchor-rating}`**.
+구성은 위에서부터 ① **4:3 사진** (`{rounded.md}` 12px, `{shadow.photo}`) → ② **가게명** `{typography.card-title}` → ③ **동네 칩** `{component.chip-neighborhood}` → ④ **`{component.anchor-rating}`**.
 
 **정보를 더 얹지 않는다.** 별점 평균·리뷰 수·가격대·영업시간을 넣는 순간 흔한 맛집 카드가 된다. 카드에 등장하는 숫자는 재방문 비율 하나뿐이어야 그것이 차별점으로 읽힌다.
 
@@ -344,7 +346,7 @@ placeholder는 **동네 이름**이다. `정발산역`. 가게명이 아니다. 
 
 호버: `transform: translateY(-2px)`, 테두리가 `{colors.hairline}` → `{colors.glyph-empty}`. **그림자를 더하지 않는다.**
 
-**`card-place-mock`** — 8/14 랜딩 전용. 사진 자리에 4:3 색면을 둔다. 크림 계열 3단계(`#F4EFE6` / `#EAE1D2` / `#E3D8C6`)를 순환시키고 중앙에 가게명 이니셜을 `{typography.section-serif}`로 얹는다. 구조는 `{component.card-place}`와 동일해서 8/18에 색면만 `<img>`로 교체하면 된다.
+**`card-place-mock`** — 8/14 랜딩 전용. 사진 자리에 4:3 색면을 둔다. 크림 계열 3단계(`#F4EFE6` / `#EAE1D2` / `#E3D8C6`)를 순환시키고 중앙에 가게명 이니셜을 `{typography.section-display}`로 얹는다. 구조는 `{component.card-place}`와 동일해서 8/18에 색면만 `<img>`로 교체하면 된다.
 
 **색면에는 `{shadow.photo}`를 주지 않는다.** 그림자가 존재하는 이유는 사진 속 대상이 면 위에 놓여 있기 때문이다. 색면은 놓인 물체가 아니라 빈 자리 표시이므로 그림자를 받을 근거가 없다. 8/18에 진짜 사진이 들어올 때 함께 추가한다.
 
@@ -378,7 +380,13 @@ placeholder는 **동네 이름**이다. `정발산역`. 가게명이 아니다. 
 
 ### Quote
 
-**`quote-log`** — 항해일지 인용. 텍스트 `{typography.quote-serif}`, 딥 네이비 타일 위에서는 `{colors.on-dark}`.
+**`quote-log`** — 항해일지 인용. 텍스트 `{typography.quote}`, 딥 네이비 타일 위에서는 `{colors.on-dark}`.
+
+**한 편씩 카드로 끊는다.** 배경 `{colors.surface-deep-2}`, `{rounded.lg}` 18px, 패딩 24px, 테두리 1px `{colors.on-dark}` 10%.
+
+배경 없이 나란히 두면 어디까지가 한 편인지 읽히지 않는다. 맛집 카드가 크림 타일 위 화이트 카드이듯, 여기는 딥 네이비 타일 위 한 단계 밝은 면이다. `{colors.surface-deep-2}`가 "어두운 타일이 겹칠 때 쓰는 미세 단차"로 정의된 이유가 이것이다.
+
+테두리에 새 색을 만들지 않는다. `{colors.hairline}`은 밝은 면 전용이므로, 네이비 위에서는 `{colors.on-dark}`의 투명도를 10%로 낮춰 쓴다.
 
 구성은 위에서부터 ① 여는 따옴표 → ② 인용 → ③ `{component.anchor-rating}` 단일형 → ④ 메타 줄이다.
 
@@ -394,7 +402,7 @@ placeholder는 **동네 이름**이다. `정발산역`. 가게명이 아니다. 
 
 **`{component.section-tile-white}` 위에 놓이므로 배경이 반대로 뒤집힌다.** 맛집 카드는 크림 타일 위 화이트 카드였고, 특징 카드는 화이트 타일 위 크림 카드다. 같은 조합을 그대로 쓰면 흰 바탕에 흰 카드가 되어 형태가 사라진다.
 
-구성은 제목 `{typography.card-title-serif}` → 설명 `{typography.body}` → `{component.badge-coming-soon}`. 누를 수 없는 요소이므로 `<div>`로 두고 호버 반응을 넣지 않는다.
+구성은 제목 `{typography.card-title}` → 설명 `{typography.body}` → `{component.badge-coming-soon}`. 누를 수 없는 요소이므로 `<div>`로 두고 호버 반응을 넣지 않는다.
 
 ### Badge & Toast
 
@@ -417,7 +425,7 @@ placeholder는 **동네 이름**이다. `정발산역`. 가게명이 아니다. 
 - 딥 네이비 타일 위에서는 `{colors.accent-on-dark}`로 바꿔 쓴다.
 - 그림자는 음식 사진에만 준다 — `{shadow.photo}` 하나뿐이다.
 - 누름 상태는 모든 버튼에서 `transform: scale(0.96)`.
-- 명조 텍스트는 산세리프보다 +1px 크게 잡는다.
+- 위계는 크기와 굵기로만 만든다. 두 번째 서체를 도입하지 않는다.
 - 카드의 사진 종횡비는 전부 4:3으로 고정한다.
 - 크림을 기본 캔버스로 두고, 네이비는 히어로와 항해일지 섹션에만 쓴다.
 
@@ -446,7 +454,7 @@ placeholder는 **동네 이름**이다. `정발산역`. 가게명이 아니다. 
 
 | 이름 | 폭 | 주요 변화 |
 |---|---|---|
-| 작은 모바일 | ≤ 419px | 카드 1열, 히어로 명조 28px, 섹션 패딩 40px |
+| 작은 모바일 | ≤ 419px | 카드 1열, 히어로 28px, 섹션 패딩 40px |
 | 모바일 | 420–639px | 카드 1열, 히어로 34px, 섹션 패딩 48px |
 | 태블릿 | 640–1023px | 카드 2열, 히어로 41px, 섹션 패딩 64px |
 | 데스크탑 | 1024–1279px | 카드 3열, 히어로 48px |
@@ -466,8 +474,30 @@ placeholder는 **동네 이름**이다. `정발산역`. 가게명이 아니다. 
 ### 이미지
 
 - 카드 사진은 4:3 고정. 폭만 변한다.
-- 히어로는 사진을 쓰지 않는다. 딥 네이비 면과 명조 제목으로 버틴다.
+- 히어로는 사진을 쓰지 않는다. 딥 네이비 면과 큰 제목으로 버틴다.
 - 지연 로딩이 기본. 첫 화면은 즉시 로딩.
+
+---
+
+## Motion
+
+### 스크롤 등장·퇴장
+
+히어로를 제외한 각 타일의 **내용**이 뷰포트에 들어오면 아래에서 위로 28px 올라오며 나타나고, 벗어나면 다시 사라진다. 700ms `ease-out`, 양방향이다.
+
+**타일 자체가 아니라 안쪽 컨테이너에 건다.** 배경까지 페이드하면 크림 body 위로 네이비 타일이 비쳐 색이 섞인다. 배경은 즉시 바뀌고 내용만 떠오른다.
+
+**`.reveal` 클래스는 JS가 붙인다.** HTML에 미리 넣어 두면 스크립트가 죽었을 때 내용이 투명한 채로 남는다.
+
+`prefers-reduced-motion: reduce`에서는 연출을 하지 않고 처음부터 보이게 둔다.
+
+### 나머지 움직임
+
+- 누름: `transform: scale(0.96)` — 모든 버튼 공통
+- 카드 호버: `translateY(-2px)` + 테두리 색 변화. 그림자를 더하지 않는다
+- 토스트: 하단 중앙에서 위로 12px, 3초 후 소멸
+
+장식용 움직임을 추가하지 않는다. 패럴랙스·자동 캐러셀·무한 루프 애니메이션을 쓰지 않는다.
 
 ---
 
@@ -477,7 +507,7 @@ placeholder는 **동네 이름**이다. `정발산역`. 가게명이 아니다. 
 2. 변형은 `-on-dark`, `-mock`처럼 별도 항목으로 둔다.
 3. 값을 인라인 hex로 적지 않는다. 항상 토큰 참조를 쓴다.
 4. 강조가 필요하면 크롬을 더하기 전에 **면을 바꾼다** (크림 → 네이비).
-5. 명조는 제목·카드 이름·인용문에서만. 이 경계를 넘지 않는다.
+5. 서체는 Pretendard 하나다. 위계가 필요하면 크기나 굵기를 바꾼다.
 6. 그림자는 음식 사진에만. 예외를 만들지 않는다.
 7. 새 색을 추가하고 싶어지면, 먼저 기존 6색으로 안 되는 이유를 적어본다.
 
@@ -498,4 +528,5 @@ placeholder는 **동네 이름**이다. `정발산역`. 가게명이 아니다. 
 | 버전 | 날짜 | 내용 |
 |---|---|---|
 | alpha | 2026-08-14 | 최초 작성 |
+| alpha.3 | 2026-08-14 | **명조(Noto Serif KR)를 제거하고 서체를 Pretendard 하나로 통일.** Apple SD Gothic Neo도 스택에서 뺐다 — 기기마다 다른 서체가 나오면 인상이 갈린다. 타이포 토큰의 `-serif` 접미사를 `hero-display`·`section-display`·`card-title`·`quote`로 정리. 크기값(57/41/21/25)은 유지한다. `quote-log`를 투명 배경에서 **카드**로 변경 — `surface-deep-2` 면 + 18px 라운드 + 24px 패딩 + `on-dark` 10% 테두리. 일지끼리 경계가 없어 한 편의 범위가 읽히지 않는 문제를 해결한다. **Motion 절 신설** — 스크롤 등장·퇴장(양방향, 700ms)을 정의. 원래 8/19~20 예정이었으나 앞당겼다. |
 | alpha.2 | 2026-08-14 | `anchor-rating`을 집계형(닻 5개)·단일형(닻 1개)으로 분리하고 3상태 데이터 모델 명시. `quote-log`에 작성자 표기 추가 (읽기 공개 정책의 시각적 근거). `card-feature` 컴포넌트 신설 — 화이트 타일 위 크림 카드. `card-place-mock` 색면에 그림자 금지 명시. 검색 placeholder를 `정발산역`으로 변경. Pretendard CDN 버전 태그 고정. Do's and Don'ts 5건 추가. Known Gaps에서 닻 글리프 항목 해소. |

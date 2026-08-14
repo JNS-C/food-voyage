@@ -95,12 +95,12 @@ function renderRestaurants() {
     // ① 4:3 색면 — 8/18에 이 자리를 <img>로 교체한다.
     //    색면은 놓인 물체가 아니라 빈 자리 표시이므로 그림자를 주지 않는다.
     const thumb = el('div', `flex aspect-[4/3] items-center justify-center rounded-photo ${TONE_CLASSES[place.tone]}`);
-    const initial = el('span', 'font-serif text-section font-semibold text-ink-48', place.initial);
+    const initial = el('span', 'text-section font-semibold text-ink-48', place.initial);
     initial.setAttribute('aria-hidden', 'true');
     thumb.appendChild(initial);
 
     // ② 가게명 → ③ 동네 칩 → ④ 재방문율. 여기서 더 얹지 않는다.
-    const name = el('h3', 'mt-4 font-serif text-card-title font-semibold', place.name);
+    const name = el('h3', 'mt-4 text-card-title font-semibold', place.name);
     const chip = el(
       'span',
       'mt-3 inline-block rounded-full bg-divider-soft px-[11px] py-[5px] text-caption text-ink-72',
@@ -123,14 +123,21 @@ function renderLogs() {
   mockLogs
     .filter((log) => log.willRevisit === 'yes')
     .forEach((log) => {
-      const card = el('article', 'w-[85vw] shrink-0 snap-start sm:w-[380px]');
+      // 일지끼리 경계가 없으면 어디까지가 한 편인지 읽히지 않는다.
+      // 맛집 카드가 크림 타일 위 화이트 카드이듯, 여기는 딥 네이비 타일 위
+      // 한 단계 밝은 면(deep-2)을 쓴다. 어두운 타일이 겹칠 때 쓰라고 있는 미세 단차다.
+      // 테두리는 새 색을 만들지 않고 on-dark를 10%로 낮춰 쓴다.
+      const card = el(
+        'article',
+        'w-[85vw] shrink-0 snap-start rounded-card border border-on-dark/10 bg-deep-2 p-6 sm:w-[380px]'
+      );
 
       // 여는 따옴표만 크게. 닫는 따옴표는 넣지 않는다.
-      const mark = el('p', 'font-serif text-quote-mark font-semibold text-accent-on-dark', '“');
+      const mark = el('p', 'text-quote-mark font-semibold text-accent-on-dark', '“');
       mark.setAttribute('aria-hidden', 'true');
 
       // 기울이지 않는다. 한글에는 이탤릭이 없다.
-      const quote = el('p', 'mt-2 font-serif text-quote text-on-dark', log.quote);
+      const quote = el('p', 'mt-2 text-quote text-on-dark', log.quote);
 
       const author = userById.get(log.userId);
       // 메타는 작성자 · 가게명 · 동네 · 날짜 4항목까지. 작성자를 반드시 넣는다 —
@@ -167,7 +174,7 @@ function renderFeatures() {
     );
 
     card.append(
-      el('h3', 'font-serif text-card-title font-semibold', feature.title),
+      el('h3', 'text-card-title font-semibold', feature.title),
       el('p', 'mt-3 text-body text-ink-72', feature.description),
       badge
     );
@@ -195,6 +202,41 @@ function showToast(message) {
   }, 3000);
 }
 
+/* ── 스크롤 등장·퇴장 ───────────────────────────────── */
+
+/**
+ * 히어로를 제외한 각 타일의 내용에 .reveal을 붙이고 뷰포트 진입 여부에 따라 토글한다.
+ * 양방향이다 — 내려가면 나타나고 다시 올라가면 사라진다.
+ *
+ * 타일(section) 자체가 아니라 안쪽 컨테이너에 건다. 배경까지 페이드하면
+ * 크림 body 위로 네이비 타일이 비쳐 색이 섞인다.
+ *
+ * .reveal을 HTML이 아니라 여기서 붙이는 이유: 스크립트가 죽었을 때
+ * 내용이 투명한 채로 남으면 안 된다.
+ */
+function initScrollReveal() {
+  if (!('IntersectionObserver' in window)) return;
+
+  const targets = [
+    ...document.querySelectorAll('section:not(:first-of-type) > div'),
+    ...document.querySelectorAll('footer > div'),
+  ];
+  if (targets.length === 0) return;
+
+  targets.forEach((node) => node.classList.add('reveal'));
+
+  const observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        entry.target.classList.toggle('is-visible', entry.isIntersecting);
+      });
+    },
+    { threshold: 0, rootMargin: '0px 0px -12% 0px' }
+  );
+
+  targets.forEach((node) => observer.observe(node));
+}
+
 /* ── 초기화 ─────────────────────────────────────────── */
 
 function bindFakeActions() {
@@ -216,3 +258,4 @@ renderRestaurants();
 renderLogs();
 renderFeatures();
 bindFakeActions();
+initScrollReveal();

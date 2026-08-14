@@ -6,10 +6,8 @@
 <title>food-voyage — 내 동네를 한 곳씩 개척하고 기록하는 미식 항해일지</title>
 <meta name="description" content="늘 가던 가게만 가는 게 답답할 때. 다녀온 곳을 항해일지처럼 남기고 아직 비어 있는 구역을 발견하세요.">
 
-<!-- 서체: CDN 경로에 버전 태그를 반드시 붙인다 (DESIGN.md 서체 로딩) -->
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- 서체는 Pretendard 하나다. CDN 경로에 버전 태그를 반드시 붙인다 (DESIGN.md 서체 로딩) -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600&display=swap">
 
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
@@ -40,12 +38,13 @@
           'glyph-empty': '#C9BFAD',
         },
         fontFamily: {
-          // Apple SD Gothic Neo는 웹폰트로 배포하지 않고 스택 앞단에만 둔다
-          sans: ['Apple SD Gothic Neo', 'Pretendard Variable', 'Pretendard', 'system-ui', 'sans-serif'],
-          serif: ['Noto Serif KR', 'serif'],
+          // 서체는 Pretendard 하나다. 마지막 sans-serif는 CDN이 죽었을 때만 쓰인다.
+          // 기기마다 다른 서체가 나오지 않도록 Apple SD Gothic Neo·system-ui를 두지 않는다.
+          sans: ['Pretendard Variable', 'Pretendard', 'sans-serif'],
         },
         fontSize: {
-          // 명조는 산세리프보다 +1px 보정된 값이다
+          // 명조 시절의 +1px 보정값을 그대로 유지한다 (57/41/21/25).
+          // 크기 체계를 흔들 만한 시각적 이득이 없다.
           'hero-1': ['28px', { lineHeight: '1.25', letterSpacing: '-0.5px' }],
           'hero-2': ['34px', { lineHeight: '1.25', letterSpacing: '-0.5px' }],
           'hero-3': ['41px', { lineHeight: '1.25', letterSpacing: '-0.5px' }],
@@ -94,11 +93,26 @@
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
   .no-scrollbar::-webkit-scrollbar { display: none; }
 
+  /* 스크롤 등장·퇴장.
+     .reveal은 JS가 붙인다 — 스크립트가 죽어도 내용이 사라지지 않게 하기 위해서다.
+     양방향이다. 내려가면 나타나고 올라가면 다시 사라진다. */
+  .reveal {
+    opacity: 0;
+    transform: translateY(28px);
+    transition: opacity 700ms ease-out, transform 700ms ease-out;
+  }
+  .reveal.is-visible {
+    opacity: 1;
+    transform: none;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
       transition-duration: 0.01ms !important;
       animation-duration: 0.01ms !important;
     }
+    /* 움직임을 줄이는 설정에서는 등장 연출 자체를 하지 않는다 */
+    .reveal { opacity: 1; transform: none; }
   }
 </style>
 </head>
@@ -126,10 +140,10 @@
 <section class="bg-deep text-on-dark">
   <div class="mx-auto flex min-h-[88vh] max-w-content flex-col justify-between p-10 xs:p-12 sm:p-16 lg:p-20">
 
-    <p class="font-serif text-card-title font-semibold lowercase text-on-dark">food-voyage</p>
+    <p class="text-card-title font-semibold lowercase text-on-dark">food-voyage</p>
 
     <div class="pt-20">
-      <h1 class="max-w-[16ch] font-serif text-hero-1 font-semibold xs:text-hero-2 sm:text-hero-3 lg:text-hero-4 xl:text-hero">
+      <h1 class="max-w-[16ch] text-hero-1 font-semibold xs:text-hero-2 sm:text-hero-3 lg:text-hero-4 xl:text-hero">
         늘 가던 곳 말고,<br>아직 안 가본 골목.
       </h1>
 
@@ -164,7 +178,7 @@
 <section class="bg-cream text-ink">
   <div class="mx-auto max-w-content p-10 xs:p-12 sm:p-16 lg:p-20">
 
-    <h2 class="font-serif text-hero-2 font-semibold sm:text-section">이 동네 사람들이<br class="sm:hidden"> 다시 간 곳</h2>
+    <h2 class="text-hero-2 font-semibold sm:text-section">이 동네 사람들이<br class="sm:hidden"> 다시 간 곳</h2>
 
     <!-- 낯선 기호는 첫 등장 섹션에서 한 번만 설명한다 -->
     <p class="mt-4 flex items-center gap-2 text-caption text-ink-48">
@@ -182,7 +196,7 @@
 <section class="bg-deep text-on-dark">
   <div class="mx-auto max-w-content p-10 xs:p-12 sm:p-16 lg:p-20">
 
-    <h2 class="font-serif text-hero-2 font-semibold sm:text-section">최근 항해일지</h2>
+    <h2 class="text-hero-2 font-semibold sm:text-section">최근 항해일지</h2>
     <p class="mt-4 text-caption text-on-dark-muted">다른 사람이 남긴 기록입니다.</p>
 
     <div id="log-scroller"
@@ -196,7 +210,7 @@
 <section class="bg-white text-ink">
   <div class="mx-auto max-w-content p-10 xs:p-12 sm:p-16 lg:p-20">
 
-    <h2 class="font-serif text-hero-2 font-semibold sm:text-section">곧 열립니다</h2>
+    <h2 class="text-hero-2 font-semibold sm:text-section">곧 열립니다</h2>
     <p class="mt-4 text-caption text-ink-48">기록이 쌓이면 이런 것들이 따라옵니다.</p>
 
     <div id="feature-grid" class="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-3"></div>
@@ -209,7 +223,7 @@
 <footer class="bg-cream-deep text-ink-72">
   <div class="mx-auto max-w-content px-10 py-16 xs:px-12 sm:px-16 lg:px-20">
 
-    <p class="font-serif text-card-title font-semibold lowercase text-ink">food-voyage</p>
+    <p class="text-card-title font-semibold lowercase text-ink">food-voyage</p>
 
     <div class="mt-6 leading-[2.2]">
       <p>만든 사람 · 최준서</p>
