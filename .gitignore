@@ -157,7 +157,10 @@ supabase/.branches
 supabase/.temp
 supabase/.env
 
-# API 키 · 인증서 (PRD §8 "API 키를 커밋하지 않는다")
+# 인증서·키 파일 — 로컬 실수 방어용 안전망일 뿐이다
+# 실제 보호는 gitignore가 아니라 서버에 있다. 키는 Vercel 환경변수에만 두고
+# 브라우저는 /api/gemini만 호출한다 (PRD §4 「API 키 처리」, §8-8)
+# api/gemini.js 자체는 커밋 대상이다 — 여기서 막지 않는다
 *.pem
 *.key
 *.p12
@@ -212,8 +215,8 @@ CLAUDE.local.md
 .scratch/
 scratchpad/
 
-# 디자인 원본 (레포에 두지 않음)
+# 대용량 편집 원본 (레포에 두지 않음)
+# 로고·앱 아이콘 산출물(svg·png)과 소스(.ai)는 커밋 대상 — PRD §7 참조
 *.psd
-*.ai
 *.sketch
 *.fig
