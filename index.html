@@ -6,8 +6,12 @@
 <title>food-voyage — 내 동네를 한 곳씩 개척하고 기록하는 미식 항해일지</title>
 <meta name="description" content="늘 가던 가게만 가는 게 답답할 때. 다녀온 곳을 항해일지처럼 남기고 아직 비어 있는 구역을 발견하세요.">
 
-<!-- 서체는 Pretendard 하나다. CDN 경로에 버전 태그를 반드시 붙인다 (DESIGN.md 서체 로딩) -->
+<!-- 본문 서체. CDN 경로에 버전 태그를 반드시 붙인다 (DESIGN.md 서체 로딩) -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css">
+<!-- 워드마크 전용. 로고 한 곳에만 쓴다. 600 하나만 받고, 라틴 문자라
+     unicode-range 덕에 한글 서브셋은 내려받지 않는다. -->
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@600&display=swap">
 
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
@@ -41,6 +45,9 @@
           // 서체는 Pretendard 하나다. 마지막 sans-serif는 CDN이 죽었을 때만 쓰인다.
           // 기기마다 다른 서체가 나오지 않도록 Apple SD Gothic Neo·system-ui를 두지 않는다.
           sans: ['Pretendard Variable', 'Pretendard', 'sans-serif'],
+          // 워드마크 전용 예외. `serif`가 아니라 `wordmark`로 이름 붙인 이유는
+          // 로고 밖으로 새어나가지 않게 하기 위해서다. 본문에 쓰지 않는다.
+          wordmark: ['Noto Serif KR', 'serif'],
         },
         fontSize: {
           // 명조 시절의 +1px 보정값을 그대로 유지한다 (57/41/21/25).
@@ -140,7 +147,7 @@
 <section class="bg-deep text-on-dark">
   <div class="mx-auto flex min-h-[88vh] max-w-content flex-col justify-between p-10 xs:p-12 sm:p-16 lg:p-20">
 
-    <p class="text-card-title font-semibold lowercase text-on-dark">food-voyage</p>
+    <p class="font-wordmark text-card-title font-semibold lowercase text-on-dark">food-voyage</p>
 
     <div class="pt-20">
       <h1 class="max-w-[16ch] text-hero-1 font-semibold xs:text-hero-2 sm:text-hero-3 lg:text-hero-4 xl:text-hero">

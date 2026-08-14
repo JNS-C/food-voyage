@@ -1,5 +1,5 @@
 ---
-version: alpha.3
+version: alpha.4
 name: food-voyage-design
 description: 크림 양피지 위에 놓인 항해일지를, 애플의 진열 방식으로 전시하는 인터페이스. 밝은 크림 타일과 딥 네이비 타일이 전면으로 교차하며 색 변화 자체가 섹션 구분선이 된다. 서체는 Pretendard 하나이고 위계는 크기와 굵기로만 만든다. 인터랙션 색은 황동 하나뿐이고, 그림자는 음식 사진에만 허용된다. 재방문율은 별이 아니라 닻으로 표기한다.
 
@@ -102,6 +102,12 @@ typography:
     fontWeight: 400
     lineHeight: 1.29
     letterSpacing: -0.1px
+  wordmark:
+    fontFamily: "Noto Serif KR, serif"
+    fontSize: 21px
+    fontWeight: 600
+    lineHeight: 1.4
+    letterSpacing: -0.2px
   fine-print:
     fontFamily: "Pretendard Variable, Pretendard, sans-serif"
     fontSize: 12px
@@ -237,7 +243,7 @@ food-voyage는 **크림 양피지 위에 놓인 항해일지를 애플의 진열
 
 - 전면 타일 교차: 크림 ↔ 딥 네이비. 색 변화가 섹션 구분선이다.
 - 인터랙션 색은 황동 `#B86B32` 하나. 두 번째 강조색은 존재하지 않는다.
-- **서체는 Pretendard 하나다.** 위계는 서체를 바꿔서가 아니라 크기와 굵기(400/600)로만 만든다. 본문은 17px.
+- **서체는 Pretendard 하나다.** 위계는 서체를 바꿔서가 아니라 크기와 굵기(400/600)로만 만든다. 본문은 17px. 히어로 워드마크만 Noto Serif KR을 쓰는 유일한 예외다.
 - 재방문율을 별이 아니라 **닻**으로 표기한다. 이 서비스의 시각적 서명이다. 집계값은 닻 5개 + 비율 숫자, 개인 기록 한 편은 닻 1개 + 라벨.
 - **별점은 존재하지 않는다.** 평가는 재방문 3상태(`yes` / `once` / `maybe`)가 대신한다.
 - 카드는 사진이 주인공(4:3), 정보는 이름·동네·닻 세 가지로 끝낸다.
@@ -295,13 +301,26 @@ Pretendard Variable → Pretendard → sans-serif
 
 **모든 텍스트가 Pretendard다.** 제목·본문·버튼·인용문에 예외가 없다.
 
+### 단 하나의 예외 — 워드마크
+
+히어로의 `food-voyage` 로고만 `{typography.wordmark}` — Noto Serif KR 600을 쓴다.
+
+로고는 읽는 글이 아니라 **표식**이다. 다른 서체를 쓰는 것이 오히려 로고임을 알린다. 라틴 문자뿐이라 `unicode-range` 덕에 한글 서브셋은 내려받지 않는다.
+
+**Tailwind에서 이 서체의 키 이름은 `serif`가 아니라 `wordmark`다.** `font-serif`로 열어두면 제목이나 인용문에 다시 번진다. 이름으로 용도를 잠근다.
+
+```html
+<!-- 워드마크만 -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@600&display=swap">
+```
+
 `Apple SD Gothic Neo`를 스택 앞단에 두지 않는다. 애플 기기에서만 다른 서체가 나와 화면 인상이 갈리기 때문이다. 마지막 `sans-serif`는 CDN이 죽었을 때만 쓰이는 최후 수단이며, 정상 상태에서는 도달하지 않는다.
 
 ### 판단 기준
 
 > **서체를 바꾸지 말고 크기와 굵기를 바꾼다.**
 
-위계가 필요하면 px를 올리거나 400 → 600으로 간다. 두 번째 서체를 도입하지 않는다. 강조색이 황동 하나뿐인 것과 같은 이유다 — 축이 하나여야 그 축이 읽힌다.
+위계가 필요하면 px를 올리거나 400 → 600으로 간다. **본문 서체를 두 개로 늘리지 않는다.** 강조색이 황동 하나뿐인 것과 같은 이유다 — 축이 하나여야 그 축이 읽힌다. 워드마크는 위계가 아니라 표식이므로 이 규칙의 밖에 있다.
 
 ### 크기 규칙
 
@@ -508,7 +527,7 @@ placeholder는 **동네 이름**이다. `정발산역`. 가게명이 아니다. 
 2. 변형은 `-on-dark`, `-mock`처럼 별도 항목으로 둔다.
 3. 값을 인라인 hex로 적지 않는다. 항상 토큰 참조를 쓴다.
 4. 강조가 필요하면 크롬을 더하기 전에 **면을 바꾼다** (크림 → 네이비).
-5. 서체는 Pretendard 하나다. 위계가 필요하면 크기나 굵기를 바꾼다.
+5. 서체는 Pretendard 하나다. 위계가 필요하면 크기나 굵기를 바꾼다. 워드마크만 예외이며 그 예외를 늘리지 않는다.
 6. 그림자는 음식 사진에만. 예외를 만들지 않는다.
 7. 새 색을 추가하고 싶어지면, 먼저 기존 6색으로 안 되는 이유를 적어본다.
 
@@ -529,5 +548,6 @@ placeholder는 **동네 이름**이다. `정발산역`. 가게명이 아니다. 
 | 버전 | 날짜 | 내용 |
 |---|---|---|
 | alpha | 2026-08-14 | 최초 작성 |
+| alpha.4 | 2026-08-14 | 히어로 **워드마크만** Noto Serif KR 600으로 되돌리고 `{typography.wordmark}` 토큰 신설. Tailwind 키를 `serif`가 아니라 `wordmark`로 두어 로고 밖으로 번지지 않게 잠갔다. 모바일 항해일지 접힘 규칙 변경 — 카드 폭 85vw(옆 카드 살짝 보이기)를 **스크롤러 꽉 채우기**로. 85vw가 콘텐츠 폭보다 넓어 위 카드 그리드와 시작선이 어긋나고 옆 카드가 화면을 침범했다. 가로 스크롤러를 타일 밖으로 흘리지 않는다는 규칙도 추가. |
 | alpha.3 | 2026-08-14 | **명조(Noto Serif KR)를 제거하고 서체를 Pretendard 하나로 통일.** Apple SD Gothic Neo도 스택에서 뺐다 — 기기마다 다른 서체가 나오면 인상이 갈린다. 타이포 토큰의 `-serif` 접미사를 `hero-display`·`section-display`·`card-title`·`quote`로 정리. 크기값(57/41/21/25)은 유지한다. `quote-log`를 투명 배경에서 **카드**로 변경 — `surface-deep-2` 면 + 18px 라운드 + 24px 패딩 + `on-dark` 10% 테두리. 일지끼리 경계가 없어 한 편의 범위가 읽히지 않는 문제를 해결한다. **Motion 절 신설** — 스크롤 등장·퇴장(양방향, 700ms)을 정의. 원래 8/19~20 예정이었으나 앞당겼다. |
 | alpha.2 | 2026-08-14 | `anchor-rating`을 집계형(닻 5개)·단일형(닻 1개)으로 분리하고 3상태 데이터 모델 명시. `quote-log`에 작성자 표기 추가 (읽기 공개 정책의 시각적 근거). `card-feature` 컴포넌트 신설 — 화이트 타일 위 크림 카드. `card-place-mock` 색면에 그림자 금지 명시. 검색 placeholder를 `정발산역`으로 변경. Pretendard CDN 버전 태그 고정. Do's and Don'ts 5건 추가. Known Gaps에서 닻 글리프 항목 해소. |
