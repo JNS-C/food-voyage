@@ -129,7 +129,10 @@ function renderLogs() {
       // 테두리는 새 색을 만들지 않고 on-dark를 10%로 낮춰 쓴다.
       const card = el(
         'article',
-        'w-[85vw] shrink-0 snap-start rounded-card border border-on-dark/10 bg-deep-2 p-6 sm:w-[380px]'
+        // 모바일에서는 스크롤러 폭을 꽉 채운다. 85vw로 다음 카드를 살짝 보이게 하면
+        // 위 카드 그리드와 폭이 어긋나고 좌우 카드가 화면을 침범한다.
+        // 한 번에 한 편만 읽히도록 옆 카드는 스크롤러 밖으로 밀려 잘린다.
+        'w-full shrink-0 snap-start rounded-card border border-on-dark/10 bg-deep-2 p-6 sm:w-[380px]'
       );
 
       // 여는 따옴표만 크게. 닫는 따옴표는 넣지 않는다.

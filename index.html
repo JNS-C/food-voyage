@@ -199,8 +199,10 @@
     <h2 class="text-hero-2 font-semibold sm:text-section">최근 항해일지</h2>
     <p class="mt-4 text-caption text-on-dark-muted">다른 사람이 남긴 기록입니다.</p>
 
+    <!-- 스크롤러를 타일 밖으로 흘리지 않는다. 컨테이너 안에 두어야 위 섹션의
+         카드 그리드와 좌측 시작선이 정확히 맞고, 카드가 잘려 보이지 않는다. -->
     <div id="log-scroller"
-         class="no-scrollbar -mx-10 mt-8 flex snap-x snap-mandatory gap-6 overflow-x-auto px-10 pb-2 xs:-mx-12 xs:px-12 sm:-mx-16 sm:px-16 lg:-mx-20 lg:px-20"></div>
+         class="no-scrollbar mt-8 flex snap-x snap-mandatory gap-6 overflow-x-auto"></div>
 
   </div>
 </section>
