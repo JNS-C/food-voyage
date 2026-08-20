@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>맛집 찾기 — food-voyage</title>
+<meta name="description" content="동네를 고르고 키워드나 카테고리로 주변 가게를 찾습니다.">
+<meta name="robots" content="noindex">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@600&display=swap">
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="tw-config.js"></script>
+<link rel="stylesheet" href="styles.css">
+</head>
+
+<!--
+  ⚠️ 이 파일은 design 소유다. 계약(ID · data-field 속성명)만 고정이고
+     클래스·감싸는 마크업·순서는 자유롭게 재디자인한다.
+
+  고정 ID   : region-select · search-form · keyword-input · category-chips
+              result-grid · result-count · toast
+  상태 블록 : state-idle · state-loading · state-empty · state-error · state-nokey
+  템플릿    : #tpl-place-card 의 [data-field] 속성명
+-->
+<body class="bg-cream font-sans text-body text-ink antialiased">
+
+<!-- 글리프. index.html과 같은 정의를 쓴다. -->
+<svg width="0" height="0" class="absolute" aria-hidden="true" focusable="false">
+  <symbol id="icon-anchor" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="4.1" r="2.3"/>
+    <path d="M12 6.4V21"/>
+    <path d="M7.2 9.6h9.6"/>
+    <path d="M4 13.4c0 4.3 3.6 7.6 8 7.6s8-3.3 8-7.6"/>
+  </symbol>
+  <symbol id="icon-search" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2.2" stroke-linecap="round">
+    <circle cx="10.8" cy="10.8" r="6.8"/>
+    <path d="M20 20l-4.4-4.4"/>
+  </symbol>
+</svg>
+
+
+<header>
+  <a href="index.html" class="font-wordmark text-card-title font-semibold lowercase text-ink">food-voyage</a>
+</header>
+
+
+<!-- ── 필터 바 ─────────────────────────────────────────
+     design: 여기가 유리(기능 레이어)를 쓸 자리다. 아래 결과 그리드가 지나간다. -->
+<div id="filter-bar">
+  <form id="search-form">
+    <label for="region-select">동네</label>
+    <select id="region-select" name="region">
+      <option value="정발산">정발산</option>
+      <option value="마두">마두</option>
+      <option value="주엽">주엽</option>
+      <option value="서울숲">서울숲</option>
+      <option value="뚝섬">뚝섬</option>
+      <option value="연무장길">연무장길</option>
+    </select>
+
+    <label for="keyword-input">키워드</label>
+    <input id="keyword-input" name="q" type="text" autocomplete="off" placeholder="파스타">
+
+    <button type="submit">찾기</button>
+  </form>
+
+  <!-- 코드형(FD6·CE7)은 category_group_code로, 나머지는 키워드에 합쳐 보낸다 -->
+  <div id="category-chips" role="group" aria-label="카테고리">
+    <button type="button" data-category="FD6" aria-pressed="true">전체</button>
+    <button type="button" data-category="CE7" aria-pressed="false">카페</button>
+    <button type="button" data-category="한식" aria-pressed="false">한식</button>
+    <button type="button" data-category="일식" aria-pressed="false">일식</button>
+    <button type="button" data-category="중식" aria-pressed="false">중식</button>
+    <button type="button" data-category="양식" aria-pressed="false">양식</button>
+    <button type="button" data-category="분식" aria-pressed="false">분식</button>
+  </div>
+</div>
+
+
+<main>
+  <p id="result-count" aria-live="polite"></p>
+
+  <!-- ── 상태 블록. logic이 hidden 속성만 토글한다 ── -->
+  <div id="state-idle">
+    <p>동네를 고르고 찾기를 누르세요.</p>
+  </div>
+
+  <div id="state-loading" hidden>
+    <p>찾는 중…</p>
+  </div>
+
+  <div id="state-empty" hidden>
+    <p>이 조건으로는 아직 찾은 곳이 없어요. 키워드를 줄여 보세요.</p>
+  </div>
+
+  <div id="state-error" hidden>
+    <p>목록을 불러오지 못했습니다. 잠시 뒤 다시 시도해 주세요.</p>
+  </div>
+
+  <div id="state-nokey" hidden>
+    <p>카카오 JavaScript 키가 필요합니다.</p>
+    <p><code>config.example.js</code>를 복사해 <code>config.js</code>로 저장하고 키를 채우세요.</p>
+  </div>
+
+  <div id="result-grid" aria-busy="false"></div>
+</main>
+
+
+<!-- ── 결과 카드 템플릿 ──────────────────────────────
+     logic: cloneNode 후 [data-field]에 textContent로만 값을 넣는다.
+     design: data-field 속성명은 유지하고 클래스·구조는 자유. -->
+<template id="tpl-place-card">
+  <article data-card>
+    <!-- 색면은 놓인 물체가 아니라 빈 자리 표시다. 그림자를 주지 않는다. -->
+    <div data-field="thumb" data-tone="0" aria-hidden="true">
+      <span data-field="initial"></span>
+    </div>
+    <h3 data-field="name"></h3>
+    <span data-field="neighborhood"></span>
+    <span data-field="category"></span>
+    <!-- 실제 가게에 가짜 재방문율(닻)을 붙이지 않는다. 기록이 없으면 없다고 쓴다. -->
+    <p data-field="norecord">아직 기록 없음</p>
+  </article>
+</template>
+
+
+<div id="toast" role="status" aria-live="polite" hidden></div>
+
+<!-- config.js는 gitignore 대상이라 없을 수 있다. 없으면 404 한 줄이 뜨지만
+     JS 예외는 나지 않는다 — 그 경우 state-nokey를 띄운다. -->
+<script src="config.js" onerror="window.__kakaoConfigMissing = true"></script>
+<script src="js/kakao-places.js"></script>
+<script src="js/search.js"></script>
+</body>
+</html>

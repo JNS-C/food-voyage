@@ -220,3 +220,6 @@ scratchpad/
 *.psd
 *.sketch
 *.fig
+
+# 카카오 JavaScript 키. config.example.js를 복사해 만든다 — 이 파일은 커밋하지 않는다.
+config.js
