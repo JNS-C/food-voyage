@@ -2,7 +2,8 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- viewport-fit=cover — 상단 유리 바가 노치 영역까지 닿아야 env(safe-area-inset-*)가 산다 -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>food-voyage — 내 동네를 한 곳씩 개척하고 기록하는 미식 항해일지</title>
 <meta name="description" content="늘 가던 가게만 가는 게 답답할 때. 다녀온 곳을 항해일지처럼 남기고 아직 비어 있는 구역을 발견하세요.">
 
@@ -13,40 +14,12 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@600&display=swap">
 
+<!-- search.html과 같은 순서를 유지한다. styles.css가 Play CDN보다 앞에 있어도
+     CDN은 생성한 유틸리티를 head 끝에 주입하므로 결국 유틸리티가 뒤에 온다.
+     그 캐스케이드를 전제로 styles.css가 특이도를 잡아 두었다. -->
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="tw-config.js"></script>
-
-<style type="text/tailwindcss">
-  /* 누름 상태는 전역적으로 scale(0.96).
-     카드의 hover:-translate-y-0.5와 같은 transform 속성을 다투므로
-     주입 순서에 의존하지 않도록 !important로 못박는다. */
-  .press:active { transform: scale(0.96) !important; }
-
-  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-  .no-scrollbar::-webkit-scrollbar { display: none; }
-
-  /* 스크롤 등장·퇴장.
-     .reveal은 JS가 붙인다 — 스크립트가 죽어도 내용이 사라지지 않게 하기 위해서다.
-     양방향이다. 내려가면 나타나고 올라가면 다시 사라진다. */
-  .reveal {
-    opacity: 0;
-    transform: translateY(28px);
-    transition: opacity 700ms ease-out, transform 700ms ease-out;
-  }
-  .reveal.is-visible {
-    opacity: 1;
-    transform: none;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after {
-      transition-duration: 0.01ms !important;
-      animation-duration: 0.01ms !important;
-    }
-    /* 움직임을 줄이는 설정에서는 등장 연출 자체를 하지 않는다 */
-    .reveal { opacity: 1; transform: none; }
-  }
-</style>
+<link rel="stylesheet" href="styles.css">
 </head>
 
 <body class="bg-cream font-sans text-body text-ink antialiased">
@@ -72,39 +45,92 @@
 </svg>
 
 
+<!-- ── 상단 유리 바 (기능 레이어) ───────────────────────
+     유리를 쓸 자격이 있는 자리다. 히어로 네이비 → 크림 → 네이비 → 화이트로
+     타일이 교차하며 바 아래를 지나가므로 뒤에 비칠 콘텐츠가 실제로 존재한다(§11.8).
+
+     body 직속에 둔 이유: 조상 체인에 transform이 하나라도 있으면
+     iOS Safari에서 backdrop-filter가 통째로 무력화된다(§11.7-1).
+     .reveal(translateY)도 .press(scale)도 이 바의 조상이 아니어야 한다. -->
+<header class="lg lg-bar fixed inset-x-0 top-0 z-40">
+  <div class="lg-bar-inner mx-auto flex max-w-content items-center justify-between gap-4 px-6 sm:px-8 lg:px-10">
+    <p class="font-wordmark text-card-title font-semibold lowercase">food-voyage</p>
+    <!-- 같은 배경을 공유하는 그룹 안에서 텍스트와 아이콘을 섞지 않는다 (§8.2) -->
+    <nav aria-label="주요">
+      <a href="search.html"
+         class="lg-link inline-flex h-11 items-center px-4 text-nav">맛집 찾기</a>
+    </nav>
+  </div>
+</header>
+
+<!-- Scroll edge effect (§2.4). 바 아래로 들어오는 콘텐츠의 경계를 한 겹 더 흐린다.
+     상단 바와 겹치지 않는 별도 띠이므로 유리 위에 유리가 아니다. -->
+<div class="lg-scroll-edge" aria-hidden="true"></div>
+
+
 <!-- ① 히어로 — 비어 있다 -->
 <section class="bg-deep text-on-dark">
-  <div class="mx-auto flex min-h-[88vh] max-w-content flex-col justify-between p-10 xs:p-12 sm:p-16 lg:p-20">
+  <!-- 88dvh. 모바일 주소창이 접혔다 펴지면 100vh/88vh가 흔들린다 (§11.6) -->
+  <div class="below-bar mx-auto flex min-h-[88dvh] max-w-content flex-col justify-center p-10 xs:p-12 sm:p-16 lg:p-20">
 
-    <p class="font-wordmark text-card-title font-semibold lowercase text-on-dark">food-voyage</p>
+    <h1 class="max-w-[16ch] text-hero-1 font-semibold xs:text-hero-2 sm:text-hero-3 lg:text-hero-4 xl:text-hero">
+      늘 가던 곳 말고,<br>아직 안 가본 골목.
+    </h1>
 
-    <div class="pt-20">
-      <h1 class="max-w-[16ch] text-hero-1 font-semibold xs:text-hero-2 sm:text-hero-3 lg:text-hero-4 xl:text-hero">
-        늘 가던 곳 말고,<br>아직 안 가본 골목.
-      </h1>
+    <p class="mt-6 max-w-[34ch] text-lead text-on-dark-muted">
+      내 동네를 한 곳씩 개척하고 기록하는 미식 항해일지.
+    </p>
 
-      <p class="mt-6 max-w-[34ch] text-lead text-on-dark-muted">
-        내 동네를 한 곳씩 개척하고 기록하는 미식 항해일지.
-      </p>
+    <!-- 히어로 검색은 유리를 쓰지 않는다.
+         네이비 단색 면 위에는 뒤로 지나갈 콘텐츠가 없어서, 유리를 놓으면
+         그냥 회색 반투명 사각형이 된다(§11.8). 불투명 화이트 컨트롤이 정직하다.
 
-      <div class="mt-10 flex max-w-[580px] flex-col gap-3 sm:flex-row">
-        <form id="search-form" class="relative flex-1">
-          <label for="search-input" class="sr-only">동네 이름으로 찾기</label>
-          <svg class="pointer-events-none absolute left-6 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-48" aria-hidden="true">
+         JS 없이 동작해야 한다. 네이티브 GET 폼이므로 제출하면
+         search.html?region=<지역명>&q=<키워드>로 그대로 이동한다. -->
+    <form id="hero-search-form" action="search.html" method="get"
+          class="mt-10 flex max-w-[620px] flex-col gap-3 sm:flex-row">
+
+      <!-- 동심(§5.2): 안쪽 컨트롤 44px pill(R=22) + 여백 4px → 바깥 R=26 = 높이 52의 pill -->
+      <div class="flex h-[52px] flex-1 items-center rounded-full border border-hairline bg-white p-1">
+        <label for="hero-region" class="sr-only">동네</label>
+        <select id="hero-region" name="region"
+                class="h-11 shrink-0 rounded-full bg-transparent pl-4 pr-2 text-body text-ink focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-accent-focus">
+          <option value="정발산">정발산</option>
+          <option value="마두">마두</option>
+          <option value="주엽">주엽</option>
+          <option value="서울숲">서울숲</option>
+          <option value="뚝섬">뚝섬</option>
+          <option value="연무장길">연무장길</option>
+        </select>
+
+        <span class="mx-1 h-5 w-px shrink-0 bg-hairline" aria-hidden="true"></span>
+
+        <div class="relative flex-1">
+          <label for="hero-keyword" class="sr-only">키워드</label>
+          <svg class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-48" aria-hidden="true">
             <use href="#icon-search"/>
           </svg>
-          <input id="search-input" type="text" autocomplete="off" placeholder="정발산역"
-                 class="h-[52px] w-full rounded-full border border-hairline bg-white pl-[46px] pr-6 text-body text-ink placeholder:text-ink-48 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-accent-focus">
-        </form>
-
-        <button id="start-btn" type="button"
-                class="press h-[52px] shrink-0 rounded-full bg-accent-on-dark px-[26px] text-btn text-deep transition duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-on-dark">
-          항해 시작하기
-        </button>
+          <input id="hero-keyword" name="q" type="text" autocomplete="off" placeholder="파스타"
+                 class="h-11 w-full rounded-full bg-transparent pl-9 pr-4 text-body text-ink placeholder:text-ink-48 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-accent-focus">
+        </div>
       </div>
 
-      <p class="mt-4 text-caption text-on-dark-muted">가게명이 아니라 동네 이름으로 찾습니다.</p>
+      <!-- 네이비 위 주요 CTA는 밝은 황동을 쓴다. 기본 황동은 대비가 부족하다. -->
+      <button type="submit"
+              class="press h-[52px] shrink-0 rounded-full bg-accent-on-dark px-[26px] text-btn text-deep transition duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-on-dark">
+        찾기
+      </button>
+    </form>
+
+    <!-- 로그인은 8/24 예정이라 아직 토스트만 띄운다 -->
+    <div class="mt-5">
+      <button id="start-btn" type="button"
+              class="press h-11 rounded-full px-[26px] text-btn text-accent-on-dark transition duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-on-dark">
+        항해 시작하기
+      </button>
     </div>
+
+    <p class="mt-4 text-caption text-on-dark-muted">동네를 고르고 키워드로 찾습니다.</p>
 
   </div>
 </section>
@@ -201,9 +227,12 @@
 </footer>
 
 
-<!-- 미구현 기능 안내 -->
-<div id="toast" role="status" aria-live="polite"
-     class="pointer-events-none fixed bottom-8 left-1/2 z-50 max-w-[calc(100vw_-_32px)] -translate-x-1/2 translate-y-3 rounded-md bg-deep px-5 py-[14px] text-caption text-on-dark opacity-0 transition duration-300"></div>
+<!-- 미구현 기능 안내.
+     transform은 styles.css가 X·Y를 통째로 소유한다. 여기에
+     -translate-x-1/2를 두면 #toast(1-0-0)가 유틸리티(0-1-0)를 이겨
+     가로 중앙 정렬이 조용히 깨진다. 레이아웃 유틸리티만 남긴다. -->
+<div id="toast" role="status" aria-live="polite" data-visible="false"
+     class="pointer-events-none fixed bottom-8 left-1/2 z-50 max-w-[calc(100vw_-_32px)] rounded-md bg-deep px-5 py-[14px] text-caption text-on-dark"></div>
 
 <script src="mock-data.js"></script>
 <script src="script.js"></script>

@@ -21,93 +21,119 @@
      클래스·감싸는 마크업·순서는 자유롭게 재디자인한다.
 
   고정 ID   : region-select · search-form · keyword-input · category-chips
-              result-grid · result-count · toast
+              result-grid · result-count · toast · filter-bar
   상태 블록 : state-idle · state-loading · state-empty · state-error · state-nokey
   템플릿    : #tpl-place-card 의 [data-field] 속성명
 -->
 <body class="bg-cream font-sans text-body text-ink antialiased">
 
-<!-- 글리프. index.html과 같은 정의를 쓴다. -->
-<svg width="0" height="0" class="absolute" aria-hidden="true" focusable="false">
-  <symbol id="icon-anchor" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-          stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="12" cy="4.1" r="2.3"/>
-    <path d="M12 6.4V21"/>
-    <path d="M7.2 9.6h9.6"/>
-    <path d="M4 13.4c0 4.3 3.6 7.6 8 7.6s8-3.3 8-7.6"/>
-  </symbol>
-  <symbol id="icon-search" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-          stroke-width="2.2" stroke-linecap="round">
-    <circle cx="10.8" cy="10.8" r="6.8"/>
-    <path d="M20 20l-4.4-4.4"/>
-  </symbol>
-</svg>
-
-
-<header>
-  <a href="index.html" class="font-wordmark text-card-title font-semibold lowercase text-ink">food-voyage</a>
+<!-- ── 상단 유리 바 (기능 레이어) ───────────────────────
+     아래로 결과 그리드가 통째로 지나간다 — 유리 뒤에 실제 콘텐츠가 있다(§11.8).
+     body 직속이라 조상 체인에 transform이 없다(§11.7-1). -->
+<header class="lg lg-bar fixed inset-x-0 top-0 z-40">
+  <div class="lg-bar-inner mx-auto flex max-w-content items-center justify-between gap-4 px-6 sm:px-8 lg:px-10">
+    <!-- 워드마크가 곧 홈 링크다. 터치 타깃 44px을 확보하려고 inline-flex + h-11로 잡는다. -->
+    <a href="index.html"
+       class="lg-link inline-flex h-11 items-center font-wordmark text-card-title font-semibold lowercase">food-voyage</a>
+  </div>
 </header>
 
 
-<!-- ── 필터 바 ─────────────────────────────────────────
-     design: 여기가 유리(기능 레이어)를 쓸 자리다. 아래 결과 그리드가 지나간다. -->
-<div id="filter-bar">
-  <form id="search-form">
-    <label for="region-select">동네</label>
-    <select id="region-select" name="region">
-      <option value="정발산">정발산</option>
-      <option value="마두">마두</option>
-      <option value="주엽">주엽</option>
-      <option value="서울숲">서울숲</option>
-      <option value="뚝섬">뚝섬</option>
-      <option value="연무장길">연무장길</option>
-    </select>
+<main class="below-bar above-toolbar mx-auto max-w-content px-6 sm:px-8 lg:px-10">
 
-    <label for="keyword-input">키워드</label>
-    <input id="keyword-input" name="q" type="text" autocomplete="off" placeholder="파스타">
+  <h1 class="text-hero-2 font-semibold sm:text-section">맛집 찾기</h1>
+  <p class="mt-4 text-caption text-ink-48">동네를 고르고 키워드나 카테고리로 주변 가게를 찾습니다.</p>
 
-    <button type="submit">찾기</button>
-  </form>
+  <!-- ── 필터 바 ─────────────────────────────────────────
+       유리를 쓰는 두 번째 자리다. 결과 그리드가 그 아래를 지나간다.
 
-  <!-- 코드형(FD6·CE7)은 category_group_code로, 나머지는 키워드에 합쳐 보낸다 -->
-  <div id="category-chips" role="group" aria-label="카테고리">
-    <button type="button" data-category="FD6" aria-pressed="true">전체</button>
-    <button type="button" data-category="CE7" aria-pressed="false">카페</button>
-    <button type="button" data-category="한식" aria-pressed="false">한식</button>
-    <button type="button" data-category="일식" aria-pressed="false">일식</button>
-    <button type="button" data-category="중식" aria-pressed="false">중식</button>
-    <button type="button" data-category="양식" aria-pressed="false">양식</button>
-    <button type="button" data-category="분식" aria-pressed="false">분식</button>
-  </div>
-</div>
+       형태만 환경에 맞춰 바뀐다(§11.2 · §8.6):
+         모바일  → 하단 툴바 (safe-area-inset 포함)
+         포인터·넓은 폭 → 상단 고정
+       position은 styles.css의 #filter-bar가 잡는다. 여기에 Tailwind
+       position 유틸리티를 붙이면 CDN 주입 순서 때문에 두 형태가 서로를 덮어쓴다.
 
+       동심(§5.2): 안쪽 pill 컨트롤(높이 44 → R 22) + padding 8 → 바깥 R 30.
+       --lg-r-group이 --lg-target과 --lg-pad로부터 계산되므로 밀도가 바뀌어도 유지된다. -->
+  <div id="filter-bar" class="lg lg-group sm:mt-8 sm:mb-6 sm:max-w-[760px]">
 
-<main>
-  <p id="result-count" aria-live="polite"></p>
+    <!-- 기능별 그룹 ①: 검색. 텍스트 아이템끼리만 묶는다 (§8.2) -->
+    <form id="search-form" class="flex flex-wrap items-center gap-2">
+      <label for="region-select" class="sr-only">동네</label>
+      <select id="region-select" name="region"
+              class="lg-inner basis-full px-4 text-body sm:basis-auto">
+        <option value="정발산">정발산</option>
+        <option value="마두">마두</option>
+        <option value="주엽">주엽</option>
+        <option value="서울숲">서울숲</option>
+        <option value="뚝섬">뚝섬</option>
+        <option value="연무장길">연무장길</option>
+      </select>
 
-  <!-- ── 상태 블록. logic이 hidden 속성만 토글한다 ── -->
-  <div id="state-idle">
-    <p>동네를 고르고 찾기를 누르세요.</p>
-  </div>
+      <label for="keyword-input" class="sr-only">키워드</label>
+      <input id="keyword-input" name="q" type="text" autocomplete="off" placeholder="파스타"
+             class="lg-inner min-w-0 flex-1 px-4 text-body">
 
-  <div id="state-loading" hidden>
-    <p>찾는 중…</p>
-  </div>
+      <!-- 화면에서 가장 중요한 액션. 유리를 틴트하는 대신 불투명 황동 fill을 쓴다 —
+           유리 위에 유리를 올리지 않기 위해서다(§2.2 · §6.2). -->
+      <button type="submit" class="lg-prominent shrink-0 px-6 text-btn">찾기</button>
+    </form>
 
-  <div id="state-empty" hidden>
-    <p>이 조건으로는 아직 찾은 곳이 없어요. 키워드를 줄여 보세요.</p>
-  </div>
-
-  <div id="state-error" hidden>
-    <p>목록을 불러오지 못했습니다. 잠시 뒤 다시 시도해 주세요.</p>
-  </div>
-
-  <div id="state-nokey" hidden>
-    <p>카카오 JavaScript 키가 필요합니다.</p>
-    <p><code>config.example.js</code>를 복사해 <code>config.js</code>로 저장하고 키를 채우세요.</p>
+    <!-- 기능별 그룹 ②: 카테고리 좁히기. 위 그룹과 여백으로 분리한다.
+         코드형(FD6·CE7)은 category_group_code로, 나머지는 키워드에 합쳐 보낸다 -->
+    <div id="category-chips" role="group" aria-label="카테고리"
+         class="no-scrollbar mt-2 flex gap-2 overflow-x-auto sm:flex-wrap sm:overflow-visible">
+      <button type="button" data-category="FD6" aria-pressed="true"  class="lg-chip px-4 text-caption">전체</button>
+      <button type="button" data-category="CE7" aria-pressed="false" class="lg-chip px-4 text-caption">카페</button>
+      <button type="button" data-category="한식" aria-pressed="false" class="lg-chip px-4 text-caption">한식</button>
+      <button type="button" data-category="일식" aria-pressed="false" class="lg-chip px-4 text-caption">일식</button>
+      <button type="button" data-category="중식" aria-pressed="false" class="lg-chip px-4 text-caption">중식</button>
+      <button type="button" data-category="양식" aria-pressed="false" class="lg-chip px-4 text-caption">양식</button>
+      <button type="button" data-category="분식" aria-pressed="false" class="lg-chip px-4 text-caption">분식</button>
+    </div>
   </div>
 
-  <div id="result-grid" aria-busy="false"></div>
+
+  <p id="result-count" aria-live="polite" class="mt-8 text-caption text-ink-48 sm:mt-0"></p>
+
+  <!-- ── 상태 블록 ────────────────────────────────────────
+       logic이 hidden 속성만 토글한다. 그래서 여기에 display 유틸리티(flex·grid 등)를
+       쓰지 않는다 — 붙는 순간 [hidden]이 무력화되어 숨겨야 할 블록이 남는다.
+       styles.css의 [hidden]{display:none!important}가 한 겹 더 막아 준다.
+
+       콘텐츠 레이어라 유리를 쓰지 않는다(§2.1). 크림 타일 위 화이트 면이다. -->
+  <div id="state-idle" class="mt-6 rounded-card border border-hairline bg-white px-6 py-14 text-center">
+    <p class="text-card-title font-semibold">아직 아무 데도 안 가봤습니다</p>
+    <p class="mt-3 text-body text-ink-72">동네를 고르고 찾기를 누르세요.</p>
+  </div>
+
+  <div id="state-loading" class="mt-6 rounded-card border border-hairline bg-white px-6 py-14 text-center" hidden>
+    <p class="text-card-title font-semibold">찾는 중…</p>
+    <p class="mt-3 text-body text-ink-72">주변 가게를 불러오고 있습니다.</p>
+  </div>
+
+  <div id="state-empty" class="mt-6 rounded-card border border-hairline bg-white px-6 py-14 text-center" hidden>
+    <p class="text-card-title font-semibold">이 조건으로는 아직 찾은 곳이 없어요</p>
+    <p class="mt-3 text-body text-ink-72">키워드를 줄이거나 카테고리를 넓혀 보세요.</p>
+  </div>
+
+  <div id="state-error" class="mt-6 rounded-card border border-hairline bg-white px-6 py-14 text-center" hidden>
+    <p class="text-card-title font-semibold">목록을 불러오지 못했습니다</p>
+    <p class="mt-3 text-body text-ink-72">잠시 뒤 다시 시도해 주세요.</p>
+  </div>
+
+  <div id="state-nokey" class="mt-6 rounded-card border border-hairline bg-white px-6 py-14 text-center" hidden>
+    <p class="text-card-title font-semibold">카카오 JavaScript 키가 필요합니다</p>
+    <p class="mt-3 text-body text-ink-72">
+      <code class="rounded bg-divider-soft px-1.5 py-0.5 text-caption">config.example.js</code>를 복사해
+      <code class="rounded bg-divider-soft px-1.5 py-0.5 text-caption">config.js</code>로 저장하고 키를 채우세요.
+    </p>
+  </div>
+
+  <!-- 3열 → 2열(≤1023px) → 1열(≤639px) -->
+  <div id="result-grid" aria-busy="false"
+       class="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3"></div>
+
 </main>
 
 
@@ -115,21 +141,37 @@
      logic: cloneNode 후 [data-field]에 textContent로만 값을 넣는다.
      design: data-field 속성명은 유지하고 클래스·구조는 자유. -->
 <template id="tpl-place-card">
-  <article data-card>
-    <!-- 색면은 놓인 물체가 아니라 빈 자리 표시다. 그림자를 주지 않는다. -->
-    <div data-field="thumb" data-tone="0" aria-hidden="true">
-      <span data-field="initial"></span>
+  <!-- 카드는 누를 수 있다(리뷰 상세 안내 토스트). 그래서 키보드 초점을 받아야 한다.
+       <button>으로 감싸지 않는 이유: <button>의 콘텐츠 모델은 phrasing content라
+       안에 <h3>를 넣으면 유효하지 않은 HTML이 된다.
+       role="button"이면 스크린리더가 카드 안 텍스트를 이어 붙여 하나의 버튼으로 읽는다 —
+       카드가 하는 일이 하나뿐이라 이 쪽이 맞다. Enter/Space 처리는 logic이 붙인다.
+       data-place-id는 런타임에 logic이 붙이므로 템플릿에 두지 않는다. -->
+  <article data-card role="button" tabindex="0"
+           class="press cursor-pointer rounded-card border border-hairline bg-white p-5 transition duration-200 hover:-translate-y-0.5 hover:border-glyph-empty focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-focus">
+    <!-- 색면은 놓인 물체가 아니라 빈 자리 표시다. 그림자를 주지 않는다.
+         칠은 styles.css의 [data-tone] 속성 선택자가 한다 — logic이 숫자를 넣는다. -->
+    <div data-field="thumb" data-tone="0" aria-hidden="true"
+         class="flex aspect-[4/3] items-center justify-center rounded-photo">
+      <span data-field="initial" class="text-section font-semibold text-ink-48"></span>
     </div>
-    <h3 data-field="name"></h3>
-    <span data-field="neighborhood"></span>
-    <span data-field="category"></span>
-    <!-- 실제 가게에 가짜 재방문율(닻)을 붙이지 않는다. 기록이 없으면 없다고 쓴다. -->
-    <p data-field="norecord">아직 기록 없음</p>
+    <h3 data-field="name" class="mt-4 text-card-title font-semibold"></h3>
+    <div class="mt-3 flex flex-wrap items-center gap-2">
+      <span data-field="neighborhood"
+            class="inline-block rounded-full bg-divider-soft px-[11px] py-[5px] text-caption text-ink-72"></span>
+      <span data-field="category" class="text-caption text-ink-48"></span>
+    </div>
+    <!-- 실제 가게에 가짜 재방문율(닻)을 붙이지 않는다. 기록이 없으면 없다고 쓴다.
+         카카오 로컬에는 사진도 재방문 데이터도 없다. 별점·리뷰수·가격대도 넣지 않는다. -->
+    <p data-field="norecord" class="mt-4 text-caption text-ink-48">아직 기록 없음</p>
   </article>
 </template>
 
 
-<div id="toast" role="status" aria-live="polite" hidden></div>
+<!-- 모바일에서는 하단 필터 툴바 위로 올라온다. bottom은 .toast-above-toolbar가 잡으므로
+     Tailwind bottom-* 유틸리티를 붙이지 않는다. transform은 styles.css가 소유한다. -->
+<div id="toast" role="status" aria-live="polite" data-visible="false"
+     class="toast-above-toolbar pointer-events-none fixed left-1/2 z-50 max-w-[calc(100vw_-_32px)] rounded-md bg-deep px-5 py-[14px] text-caption text-on-dark"></div>
 
 <!-- config.js는 gitignore 대상이라 없을 수 있다. 없으면 404 한 줄이 뜨지만
      JS 예외는 나지 않는다 — 그 경우 state-nokey를 띄운다. -->

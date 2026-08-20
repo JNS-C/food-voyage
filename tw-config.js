@@ -9,6 +9,12 @@
  * 4개 서브레이어를 재현할 수 없다 (LIQUID-GLASS.md §10.11).
  */
 tailwind.config = {
+  // hover: 유틸리티를 (hover: hover) 안으로 감싼다.
+  // 감싸지 않으면 터치 기기에서 탭한 뒤 hover 상태가 그대로 남는다(sticky hover) —
+  // 결과 카드처럼 탭이 곧 액션인 요소에서 특히 티가 난다. LIQUID-GLASS.md §11.1.
+  future: {
+    hoverOnlyWhenSupported: true,
+  },
   theme: {
     extend: {
       colors: {

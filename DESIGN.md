@@ -1,5 +1,5 @@
 ---
-version: alpha.5
+version: beta
 name: food-voyage-design
 description: 크림 양피지 위에 놓인 항해일지를, 애플의 진열 방식으로 전시하는 인터페이스. 밝은 크림 타일과 딥 네이비 타일이 전면으로 교차하며 색 변화 자체가 섹션 구분선이 된다. 서체는 Pretendard 하나이고 위계는 크기와 굵기로만 만든다. 인터랙션 색은 황동 하나뿐이고, 그림자는 음식 사진에만 허용된다. 재방문율은 별이 아니라 닻으로 표기한다.
 
@@ -230,6 +230,34 @@ components:
     typography: "{typography.caption}"
     rounded: "{rounded.pill}"
     padding: 5px 11px
+  # ── 기능 레이어 (Liquid Glass) ──
+  # 재질 수치(blur·불투명도·하이라이트·그림자)는 LIQUID-GLASS.md §10.2에만 둔다.
+  # 여기에 복제하지 않는다. 이 문서가 담당하는 것은 색과 역할이다.
+  glass-toolbar:
+    material: liquid-glass-regular
+    fillTint: "{colors.surface-deep-1}"
+    textColor: "{colors.on-dark}"
+    textMuted: "{colors.on-dark-muted}"
+    rounded: "{rounded.none}"
+  filter-bar:
+    material: liquid-glass-regular
+    fillTint: "{colors.surface-deep-1}"
+    textColor: "{colors.on-dark}"
+    textMuted: "{colors.on-dark-muted}"
+    prominentFill: "{colors.accent-on-dark}"
+    prominentTextColor: "{colors.surface-deep-1}"
+  card-place-search:
+    backgroundColor: "{colors.canvas-white}"
+    textColor: "{colors.ink}"
+    typography: "{typography.card-title}"
+    rounded: "{rounded.lg}"
+    padding: 20px
+  state-block:
+    backgroundColor: "{colors.canvas-white}"
+    textColor: "{colors.ink-muted-72}"
+    typography: "{typography.body}"
+    rounded: "{rounded.lg}"
+    padding: 56px 24px
 ---
 
 ## Overview
@@ -350,11 +378,25 @@ Pretendard Variable → Pretendard → sans-serif
 
 **`button-quiet`** — 보조 동작. 배경 없음, 텍스트 `{colors.accent}`. 테두리를 넣지 않는다.
 
+#### 어느 버튼이 채움을 갖는가
+
+**한 화면에서 채움(`{component.button-primary}` / `{component.button-on-dark}`)은 실제로 동작하는 액션이 갖는다. 아직 구현되지 않은 액션은 `{component.button-quiet}`로 내린다.**
+
+히어로가 그 예다. `찾기`는 눌리면 진짜로 검색 페이지로 이동하므로 `{component.button-on-dark}` 채움을 갖고, `항해 시작하기`는 로그인이 8/24 예정이라 토스트만 띄우므로 텍스트 버튼이다. 문구의 무게로는 후자가 더 커 보이지만, 화면의 위계는 **문구의 야심이 아니라 눌렀을 때 일어나는 일**을 따른다.
+
+`{component.badge-coming-soon}`에 황동을 쓰지 않는 것과 같은 규칙이다. 황동은 "누를 수 있음"의 유일한 신호이고, 아무 일도 일어나지 않는 것에 그 신호를 가장 강한 형태로 주면 신호가 오염된다.
+
+**되돌리지 마라.** 로그인이 실제로 열리는 시점(8/24)에 `항해 시작하기`를 채움으로 올릴지 다시 판단한다 — 그때는 두 액션이 다 동작하므로 무엇이 더 중요한 액션인지로 갈리고, 이 규칙이 아니라 그 판단이 근거가 된다.
+
 ### Inputs
 
 **`search-neighborhood`** — 히어로의 동네 검색창. 배경 `{colors.canvas-white}`, `{rounded.pill}`, 높이 52px, 패딩 14px × 24px, 테두리 1px `{colors.hairline}`. 앞쪽에 16px 검색 글리프.
 
-placeholder는 **동네 이름**이다. `정발산역`. 가게명이 아니다. 가게명 검색은 기존 맛집 앱의 문법이고, 동네 검색은 개척 컨셉을 강화한다. 이 구분은 장식이 아니라 서비스 정체성이다.
+**동네는 자유 입력이 아니라 select다.** 카카오 Geocoder가 해석할 수 있는 한글 지역명만 값으로 두고, 키워드 입력창을 그 옆에 붙인다. 동네를 먼저 고르는 순서 자체가 개척 컨셉이다 — 가게명부터 치는 것은 기존 맛집 앱의 문법이다. 키워드 placeholder는 `파스타`처럼 **음식**이지 가게명이 아니다.
+
+히어로 폼은 **JS 없이 동작하는 네이티브 GET 폼**이다. 제출하면 `search.html?region=<지역명>&q=<키워드>`로 이동한다. 스크립트가 죽어도 검색이 살아 있어야 한다.
+
+**히어로 검색창에는 유리를 쓰지 않는다.** 네이비 단색 면 위에는 뒤로 지나갈 콘텐츠가 없어서, 유리를 놓으면 그냥 회색 반투명 사각형이 된다.
 
 포커스 시 테두리가 `{colors.accent-focus}` 2px로 바뀐다.
 
@@ -446,6 +488,58 @@ placeholder는 **동네 이름**이다. `정발산역`. 가게명이 아니다. 
 
 **`toast`** — 미구현 기능 안내. 배경 `{colors.surface-deep-1}`, 텍스트 `{colors.on-dark}`, `{rounded.md}`, 패딩 14px × 20px. 화면 하단 중앙에서 위로 12px 올라오며 나타나고 3초 뒤 사라진다.
 
+**표시 여부는 `data-visible` 속성 하나로 표현한다.** 두 페이지가 같은 계약을 쓴다 — `textContent`를 넣고 `data-visible="true"`, 3초 뒤 `"false"`.
+
+`hidden`(=`display:none`)을 쓰지 않는 이유는 두 가지다. 트랜지션이 시작되지 않고, 무엇보다 **`aria-live` 영역이 숨겨져 있으면 텍스트 변경이 낭독되지 않는다.** `visibility:hidden`도 같은 이유로 안 된다. `opacity:0`은 접근성 트리에 남으므로 `role="status"`가 정상 동작한다.
+
+`transform`은 CSS가 X·Y를 통째로 소유한다. 마크업에 가로 중앙 정렬 유틸리티를 남기면 ID 선택자가 이겨 정렬이 조용히 깨진다.
+
+### 기능 레이어 — Liquid Glass
+
+`LIQUID-GLASS.md`가 재질과 레이어링을, 이 문서가 색을 맡는다. 충돌하면 **색은 이 문서, 레이어링은 그 문서**가 이긴다. 유리의 수치(blur·불투명도·하이라이트·그림자·반경)는 `LIQUID-GLASS.md` §10.2에만 있고 여기에 복제하지 않는다.
+
+**유리는 기능 레이어에만 쓴다.** 맛집 카드·항해일지 카드·특징 카드·검색 결과 카드는 콘텐츠 레이어이므로 지금처럼 불투명 화이트/크림/`{colors.surface-deep-2}` 면을 유지한다. "유리처럼 보이는 카드"는 Liquid Glass가 아니다.
+
+**뒤로 지나갈 콘텐츠가 없으면 유리를 쓰지 않는다.** 단색 면 위의 유리는 그냥 회색 반투명 사각형이다. 히어로 검색창이 불투명 화이트로 남은 이유가 이것이다 — 네이비 단색 면 위에는 비칠 것이 없다.
+
+한 화면에 동시에 보이는 유리 표면은 **2개**다. 모바일에서 동시 `backdrop-filter`를 2개 이하로 유지하기 위한 상한이기도 하다.
+
+**`glass-toolbar`** — 상단 내비/워드마크 바. 두 페이지 공통이고 화면 상단에 고정된다. 전면 바이므로 라운드가 없다 — 전면 타일에 라운드를 주지 않는 것과 같은 이유다.
+
+fill을 **딥 네이비(`{colors.surface-deep-1}`)로 틴트한다.** 크림 틴트도 그려 보고 정했다. 크림은 히어로 네이비 위에 정지해 있을 때 바가 회색 띠로 떠서, "뒤에 아무것도 없는 유리"의 전형적인 실패로 보인다. 네이비 틴트는 히어로에서 출발할 때 타일에 녹아 있다가 크림·화이트 타일이 아래로 지나가기 시작하면 그때 표면으로 떠오른다. **유리가 뒤에 있는 것에 반응한다는 사실 자체가 눈에 보인다.**
+
+그래서 이 유리는 **네이비 면**이고, 위에 얹는 전경색은 `{colors.on-dark}` / `{colors.on-dark-muted}`, 액센트는 `{colors.accent-on-dark}`다. "딥 네이비 타일 위에서는 밝은 황동을 쓴다"는 기존 규칙이 그대로 적용된다. **새 색이 아니라 히어로가 쓰던 색이 기능 레이어로 이어진 것이다.**
+
+이것이 "네이비는 히어로와 항해일지 섹션에만"이라는 규칙의 예외가 아닌 이유: 바는 타일이 아니라 그 위를 떠다니는 레이어이고, 반투명해서 아래 타일의 색을 계속 받는다. 네이비 타일 위에서는 사실상 보이지 않는다.
+
+**`filter-bar`** — 검색 페이지의 지역·키워드·카테고리 묶음. 결과 그리드가 그 아래를 지나가므로 유리를 쓸 자격이 있다.
+
+**역할은 그대로 두고 형태만 환경에 맞춰 바꾼다.** 모바일은 하단 툴바(`safe-area-inset` 포함), 넓은 폭에서는 상단 고정이다. 툴바 아이템은 기능으로 묶는다 — 검색(동네·키워드·찾기)과 카테고리 좁히기를 여백으로 분리한다. 같은 배경을 공유하는 그룹 안에서 텍스트 버튼과 아이콘 버튼을 섞지 않는다.
+
+**유리 위에 유리를 올리지 않는다.** 안쪽 컨트롤(select·입력창·칩·찾기 버튼)은 반투명 fill과 vibrancy로만 처리한다. 주요 액션인 `찾기`와 선택된 카테고리 칩은 유리를 틴트하는 대신 **불투명 밝은 황동 fill**을 쓴다. 그래서 이 시스템에는 틴트된 유리 표면이 0개다.
+
+**그림자는 유리에만 예외를 만든다.** "그림자는 음식 사진에만"이라는 규칙은 콘텐츠 레이어 이야기다. 기능 레이어는 떠 있다는 사실 자체가 정보라서 접지 그림자가 필요하다. 대신 검정이 아니라 먹색을 깔아 팔레트 안에 둔다.
+
+### Search Results
+
+**`card-place-search`** — 검색 결과 카드. `{component.card-place}`와 같은 구조·같은 면이지만 **닻 자리가 "아직 기록 없음"으로 바뀐다.**
+
+구성은 ① 4:3 색면 → ② 가게명 → ③ 동네 칩 + 카테고리 → ④ `아직 기록 없음` `{typography.caption}` `{colors.ink-muted-48}`이다.
+
+**별점·리뷰 수·가격대를 넣지 않는다.** 그리고 **실제 가게에 가짜 닻을 붙이지 않는다.** 카카오 로컬에는 사진도 재방문 데이터도 없다. 없는 것을 없다고 쓰는 편이 정직하고, 기록이 쌓이면 그 자리가 그대로 `{component.anchor-rating}`으로 바뀐다.
+
+색면은 `{colors.canvas-cream}` / `{colors.surface-cream-deep}` / `#E3D8C6` 3단계를 순환하고 **그림자를 주지 않는다.**
+
+**카드는 누를 수 있으므로 키보드 초점을 받아야 한다.** 루트에 `role="button"`과 `tabindex="0"`을 준다. `<button>`으로 감싸지 않는다 — `<button>`의 콘텐츠 모델은 phrasing content라 안에 `<h3>`를 넣으면 유효하지 않은 HTML이 된다. `role="button"`이면 스크린리더가 카드 안 텍스트를 이어 붙여 하나의 버튼으로 읽고, 카드가 하는 일이 하나뿐이라 그게 맞다.
+
+**포커스 링은 색면이 아니라 카드 전체에 건다.** `:focus-visible`에 `{colors.accent-focus}` 2px 아웃라인, 오프셋 2px. `outline: none`만 주고 끝내지 않는다. 호버·누름은 `{component.card-place}`와 같다 — `translateY(-2px)` + 테두리 `{colors.glyph-empty}`, 누름 `scale(0.96)`. 그림자를 더하지 않는다.
+
+`hover:` 유틸리티는 `(hover: hover)` 안에서만 적용되게 잠가 두었다(`tw-config.js`의 `hoverOnlyWhenSupported`). 잠그지 않으면 터치에서 탭한 뒤 호버 상태가 남는다.
+
+**`state-block`** — 검색 페이지의 빈 상태·로딩·에러·키 없음 안내. 배경 `{colors.canvas-white}`, 1px `{colors.hairline}`, `{rounded.lg}`, 패딩 56 × 24px, 가운데 정렬. 제목 `{typography.card-title}` + 설명 `{typography.body}` `{colors.ink-muted-72}`.
+
+**콘텐츠 레이어이므로 유리를 쓰지 않는다.** 그리고 이 블록들에 `display` 계열 유틸리티를 붙이지 않는다 — 표시 여부를 `hidden` 속성으로만 토글하므로, `display`가 한 번이라도 지정되면 숨겨야 할 블록이 남는다.
+
 ### Footer
 
 **`section-tile-footer`** — 배경 `{colors.surface-cream-deep}`, 텍스트 `{colors.ink-muted-72}`, 상하 패딩 64px. 링크는 `{typography.body}`에 행간 2.2로 넉넉히. 최하단 법적 문구는 `{typography.fine-print}`.
@@ -464,6 +558,9 @@ placeholder는 **동네 이름**이다. `정발산역`. 가게명이 아니다. 
 - 위계는 크기와 굵기로만 만든다. 두 번째 서체를 도입하지 않는다.
 - 카드의 사진 종횡비는 전부 4:3으로 고정한다.
 - 크림을 기본 캔버스로 두고, 네이비는 히어로와 항해일지 섹션에만 쓴다.
+- 유리는 기능 레이어(상단 바·필터 바)에만 쓴다. 뒤로 콘텐츠가 지나가는 자리에만.
+- 유리의 fill은 딥 네이비로 틴트하고, 그 위 전경색은 `{colors.on-dark}` 계열과 `{colors.accent-on-dark}`를 쓴다.
+- 접근성 설정(`prefers-reduced-transparency` · `prefers-reduced-motion` · `prefers-contrast`) 세 가지를 전부 구현한다.
 
 ### Don't
 
@@ -481,6 +578,12 @@ placeholder는 **동네 이름**이다. `정발산역`. 가게명이 아니다. 
 - 굵기 500을 쓰지 않는다. 400과 600만 존재한다.
 - 라운드 문법을 섞지 않는다. 타일 0, 카드 18px, 사진 12px, 버튼과 검색창 pill.
 - `{colors.accent-on-dark}`를 밝은 배경에서 쓰지 않는다. 네이비 전용이다.
+- 콘텐츠 카드(맛집·항해일지·특징·검색 결과)에 유리를 쓰지 않는다.
+- 유리 위에 유리를 올리지 않는다. 안쪽은 fill과 vibrancy로 처리한다.
+- 유리 요소를 `transform`이 걸린 조상 안에 넣지 않는다. iOS Safari에서 `backdrop-filter`가 통째로 무력화된다.
+- 누를 수 있는 요소를 마우스 전용으로 만들지 않는다. 클릭 핸들러가 붙으면 초점과 포커스 링도 함께 붙는다.
+- 실제 가게에 가짜 닻(재방문율)을 붙이지 않는다. 기록이 없으면 없다고 쓴다.
+- 뷰포트 높이에 `100vh`를 쓰지 않는다. 모바일 주소창이 접히면 흔들린다 — `100dvh`.
 
 ---
 
@@ -508,6 +611,8 @@ placeholder는 **동네 이름**이다. `정발산역`. 가게명이 아니다. 
 - 가로 스크롤러를 타일 밖으로 흘리지 않는다. 섹션 컨테이너 안에 두어야 다른 섹션의 카드와 시작선이 맞는다.
 - 가로 스크롤러에는 **`{component.carousel-nav}`를 반드시 짝지운다.** 640px 이상에서만 보이며, 그 아래는 스와이프가 대신한다.
 - 섹션 패딩: 80px → 64px → 48px → 40px
+- `{component.filter-bar}`: 640px 이상은 상단 고정, 그 아래는 하단 툴바. 하단일 때 `env(safe-area-inset-bottom)`을 더해 홈 인디케이터를 피하고, 결과 그리드 아래에 그만큼 여백을 둔다.
+- 형태는 화면 폭보다 **입력 모델**로 먼저 갈린다. hover 반응은 `(hover: hover) and (pointer: fine)`으로 감싼다 — 감싸지 않으면 터치 기기에서 탭한 뒤 hover가 남는다.
 
 ### 이미지
 
@@ -554,7 +659,10 @@ placeholder는 **동네 이름**이다. `정발산역`. 가게명이 아니다. 
 ## Known Gaps
 
 - 폼 검증·에러 상태는 아직 정의하지 않았다. 8/18 리뷰 작성 화면에서 정한다.
-- 다크 모드 대응은 정의하지 않았다. 이 시스템은 이미 크림과 네이비를 함께 쓰므로 별도 다크 모드가 필요한지부터 판단해야 한다.
+- 다크 모드 대응은 정의하지 않았다. 이 시스템은 이미 크림과 네이비를 함께 쓰므로 별도 다크 모드가 필요한지부터 판단해야 한다. **`prefers-color-scheme: dark`를 도입하지 않기로 한 것은 이 판단이 끝날 때까지의 결정이다.** `LIQUID-GLASS.md` §10.2의 dark 토큰 블록도 같은 이유로 넣지 않았다.
+- 유리 위 vibrancy 램프가 `{colors.on-dark}` 계열 하나뿐이다. 유리가 항상 네이비 면이라 먹색 램프를 만들 근거가 없었다. 밝은 면 유리를 도입하게 되면 그때 `{colors.ink}` 기반 램프를 추가한다.
+- 유리가 크림 위에 있을 때는 뒤 콘텐츠가 섞여 들어와 순수한 네이비가 아니라 **한 단계 밝은 청회색**으로 렌더된다. 대비는 충분하지만(크림 라벨 기준 8:1 근처) 브랜드 네이비와 같은 색으로 읽히지는 않는다. 이것이 의도한 인상인지 실기기에서 한 번 더 봐야 한다.
+- 검색 결과가 비어 있는 상태에서는 필터 바 뒤로 지나갈 것이 없어 유리가 평평한 판으로 보인다. 결과가 차면 해소되지만, 빈 상태의 첫인상은 확인이 필요하다.
 - 8/25 차트(도넛·워드클라우드)의 색 단계는 미정이다. 황동 하나로 3분할(또 갈 곳 / 한 번이면 충분 / 애매함)을 표현할지, 예외적으로 명도 단계를 쓸지 결정이 필요하다.
 - ~~닻 글리프의 소스가 미정이다.~~ **해소** — 인라인 SVG `<symbol id="icon-anchor">`를 문서 상단에 한 번 정의하고 `<use>`로 재사용한다. 네트워크 의존성이 없고 `fill="currentColor"`라 채움·빈 상태를 색만으로 전환할 수 있다. 16px에서 읽히도록 링·가로대·갈고리만 남긴 단순형으로 그린다. 다만 **실제로 16px에서 읽히는지는 구현 후 검증이 필요하다.**
 - 실제 음식 사진이 들어오는 8/18 이후, 크림 배경과 사진 채도의 궁합을 재확인해야 한다.
@@ -565,6 +673,7 @@ placeholder는 **동네 이름**이다. `정발산역`. 가게명이 아니다. 
 
 | 버전 | 날짜 | 내용 |
 |---|---|---|
+| beta | 2026-08-20 | **Liquid Glass 기능 레이어 도입.** `glass-toolbar`(상단 내비 바)·`filter-bar`(검색 페이지 필터) 신설. 유리는 뒤로 콘텐츠가 지나가는 자리에만 쓰고, 콘텐츠 카드는 전부 불투명 면을 유지한다. 유리 fill을 딥 네이비로 틴트하고 전경색을 `on-dark` 램프로 통일했다 — 크림 틴트는 히어로 위에 정지해 있을 때 회색 띠로 떠서 폐기했다. **검색 페이지 신설** — `card-place-search`(닻 대신 "아직 기록 없음")·`state-block` 등록. 히어로 검색을 토스트에서 **네이티브 GET 폼**으로 교체(`search.html?region=&q=`), 동네를 자유 입력에서 select로. 토스트를 `data-visible` 계약으로 통일해 두 페이지가 같은 마크업을 쓴다. `card-place-search`에 `role="button"`·`tabindex="0"`·`:focus-visible` 링을 얹어 키보드로 조작 가능하게 했고, `hover:` 유틸리티를 `(hover: hover)` 안으로 잠갔다. 스타일을 `styles.css`로 분리하고 `prefers-reduced-transparency`·`prefers-reduced-motion`·`prefers-contrast`를 구현. 유리 수치는 `LIQUID-GLASS.md`에만 두고 이 문서에 복제하지 않는다. |
 | alpha | 2026-08-14 | 최초 작성 |
 | alpha.5 | 2026-08-14 | **`carousel-nav` 신설** — 가로 스크롤러의 좌우 넘김 버튼. 스크롤바를 숨긴 탓에 포인터 환경에서 항해일지를 넘길 방법이 없던 문제를 해결한다. 640px 이상에서만 노출하고, 양 끝에서 `disabled`, 넘길 것이 없으면 숨긴다. 이동 폭은 카드 실측값 + 간격. |
 | alpha.4 | 2026-08-14 | 히어로 **워드마크만** Noto Serif KR 600으로 되돌리고 `{typography.wordmark}` 토큰 신설. Tailwind 키를 `serif`가 아니라 `wordmark`로 두어 로고 밖으로 번지지 않게 잠갔다. 모바일 항해일지 접힘 규칙 변경 — 카드 폭 85vw(옆 카드 살짝 보이기)를 **스크롤러 꽉 채우기**로. 85vw가 콘텐츠 폭보다 넓어 위 카드 그리드와 시작선이 어긋나고 옆 카드가 화면을 침범했다. 가로 스크롤러를 타일 밖으로 흘리지 않는다는 규칙도 추가. |

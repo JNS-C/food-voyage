@@ -10,8 +10,11 @@ const SVG_NS = 'http://www.w3.org/2000/svg';
 /** card-place-mock 색면 3단계. 순환시킨다. */
 const TONE_CLASSES = ['bg-cream', 'bg-cream-deep', 'bg-cream-deeper'];
 
+/**
+ * 검색은 더 이상 여기 없다. 히어로 폼(#hero-search-form)이 네이티브 GET으로
+ * search.html로 이동하므로 가로챌 이유가 사라졌다.
+ */
 const TOAST_MESSAGES = {
-  search: '동네 검색은 8월 18일에 열립니다',
   login: '로그인은 8월 24일에 열립니다',
   detail: '리뷰 상세는 8월 18일에 열립니다',
 };
@@ -189,19 +192,26 @@ function renderFeatures() {
 
 let toastTimer = null;
 
-/** 단일 인스턴스를 재사용한다. 연타하면 타이머만 리셋된다. */
+/**
+ * 단일 인스턴스를 재사용한다. 연타하면 타이머만 리셋된다.
+ *
+ * 표시 여부를 data-visible 하나로 표현한다. 두 페이지가 같은 계약을 쓰고
+ * (js/search.js도 동일), 실제 스타일은 styles.css의 #toast가 소유한다.
+ *
+ * hidden(=display:none)은 트랜지션을 시작시키지 않고, visibility:hidden은
+ * aria-live 영역의 낭독을 막는다. opacity:0은 접근성 트리에 남으므로
+ * role="status"가 정상 동작한다.
+ */
 function showToast(message) {
   const toast = document.getElementById('toast');
   if (!toast) return;
 
   toast.textContent = message;
-  toast.classList.remove('opacity-0', 'translate-y-3');
-  toast.classList.add('opacity-100', 'translate-y-0');
+  toast.dataset.visible = 'true';
 
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => {
-    toast.classList.add('opacity-0', 'translate-y-3');
-    toast.classList.remove('opacity-100', 'translate-y-0');
+    toast.dataset.visible = 'false';
   }, 3000);
 }
 
@@ -289,15 +299,12 @@ function initScrollReveal() {
 
 /* ── 초기화 ─────────────────────────────────────────── */
 
+/**
+ * 히어로 검색 폼은 여기서 손대지 않는다. action="search.html" method="get"으로
+ * 그대로 이동해야 하고, JS가 죽어도 동작해야 한다. preventDefault를 걸면
+ * 이동이 막힌다.
+ */
 function bindFakeActions() {
-  const searchForm = document.getElementById('search-form');
-  if (searchForm) {
-    searchForm.addEventListener('submit', (event) => {
-      event.preventDefault();
-      showToast(TOAST_MESSAGES.search);
-    });
-  }
-
   const startBtn = document.getElementById('start-btn');
   if (startBtn) {
     startBtn.addEventListener('click', () => showToast(TOAST_MESSAGES.login));
