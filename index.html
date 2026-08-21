@@ -92,16 +92,12 @@
 
       <!-- 동심(§5.2): 안쪽 컨트롤 44px pill(R=22) + 여백 4px → 바깥 R=26 = 높이 52의 pill -->
       <div class="flex h-[52px] flex-1 items-center rounded-full border border-hairline bg-white p-1">
-        <label for="hero-region" class="sr-only">동네</label>
-        <select id="hero-region" name="region"
-                class="h-11 shrink-0 rounded-full bg-transparent pl-4 pr-2 text-body text-ink focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-accent-focus">
-          <option value="정발산">정발산</option>
-          <option value="마두">마두</option>
-          <option value="주엽">주엽</option>
-          <option value="서울숲">서울숲</option>
-          <option value="뚝섬">뚝섬</option>
-          <option value="연무장길">연무장길</option>
-        </select>
+        <!-- 8/21: 고정 6개 select에서 자유 입력으로. 여기 목록을 남겨 두면
+             사용자가 처음 보는 화면이 여전히 '동네는 6개'라고 가르치게 된다.
+             자동완성은 검색 페이지에만 붙는다 — 랜딩에 카카오 SDK를 얹지 않는다. -->
+        <label for="hero-region" class="sr-only">지역</label>
+        <input id="hero-region" name="region" type="text" autocomplete="off" placeholder="예: 성수동"
+               class="h-11 w-[124px] shrink-0 rounded-full bg-transparent pl-4 pr-2 text-body text-ink placeholder:text-ink-48 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-accent-focus">
 
         <span class="mx-1 h-5 w-px shrink-0 bg-hairline" aria-hidden="true"></span>
 
@@ -110,6 +106,9 @@
           <svg class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-48" aria-hidden="true">
             <use href="#icon-search"/>
           </svg>
+          <!-- placeholder는 짧은 예시 하나만 둔다. 지역 칸과 한 알약을 나눠 쓰는 구조라
+               390px에서 텍스트 여유가 100px뿐이고 '파스타 · 가게 이름'은 118px이 필요하다.
+               두 축(음식·가게명) 설명은 폼 아래 안내 문구가 한다. -->
           <input id="hero-keyword" name="q" type="text" autocomplete="off" placeholder="파스타"
                  class="h-11 w-full rounded-full bg-transparent pl-9 pr-4 text-body text-ink placeholder:text-ink-48 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-accent-focus">
         </div>
@@ -130,7 +129,7 @@
       </button>
     </div>
 
-    <p class="mt-4 text-caption text-on-dark-muted">동네를 고르고 키워드로 찾습니다.</p>
+    <p class="mt-4 text-caption text-on-dark-muted">지역을 정하고 음식이나 가게 이름으로 찾습니다.</p>
 
   </div>
 </section>

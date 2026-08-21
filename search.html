@@ -20,10 +20,21 @@
   ⚠️ 이 파일은 design 소유다. 계약(ID · data-field 속성명)만 고정이고
      클래스·감싸는 마크업·순서는 자유롭게 재디자인한다.
 
-  고정 ID   : region-select · search-form · keyword-input · category-chips
+  고정 ID   : region-input · region-panel · region-listbox · region-status
+              search-form · keyword-input · category-chips
               result-grid · result-count · toast · filter-bar
   상태 블록 : state-idle · state-loading · state-empty · state-error · state-nokey
-  템플릿    : #tpl-place-card 의 [data-field] 속성명
+              state-noregion
+  템플릿    : #tpl-place-card · #tpl-region-option 의 [data-field] 속성명
+
+  배치 제약 : #region-panel 은 <body> 직속이다. #filter-bar 안에 넣으면
+              .lg 의 contain:paint 에 잘리고 isolation:isolate 에 갇혀
+              열려도 화면에 안 나온다 — 에러는 나지 않는다.
+              #region-status 는 aria-live 라 절대 hidden 이 되면 안 된다.
+
+  8/21 변경 : region-select(고정 6개 동네) → region-input(자유 입력 + 자동완성).
+              JS는 region-input 이 없으면 region-select 를 그대로 읽으므로
+              이 파일이 아직 옛 마크업이어도 검색은 동작한다.
 -->
 <body class="bg-cream font-sans text-body text-ink antialiased">
 
@@ -42,7 +53,7 @@
 <main class="below-bar above-toolbar mx-auto max-w-content px-6 sm:px-8 lg:px-10">
 
   <h1 class="text-hero-2 font-semibold sm:text-section">맛집 찾기</h1>
-  <p class="mt-4 text-caption text-ink-48">동네를 고르고 키워드나 카테고리로 주변 가게를 찾습니다.</p>
+  <p class="mt-4 text-caption text-ink-48">지역을 정하고 음식·가게 이름·카테고리로 그 주변을 찾습니다.</p>
 
   <!-- ── 필터 바 ─────────────────────────────────────────
        유리를 쓰는 두 번째 자리다. 결과 그리드가 그 아래를 지나간다.
@@ -59,19 +70,14 @@
 
     <!-- 기능별 그룹 ①: 검색. 텍스트 아이템끼리만 묶는다 (§8.2) -->
     <form id="search-form" class="flex flex-wrap items-center gap-2">
-      <label for="region-select" class="sr-only">동네</label>
-      <select id="region-select" name="region"
-              class="lg-inner basis-full px-4 text-body sm:basis-auto">
-        <option value="정발산">정발산</option>
-        <option value="마두">마두</option>
-        <option value="주엽">주엽</option>
-        <option value="서울숲">서울숲</option>
-        <option value="뚝섬">뚝섬</option>
-        <option value="연무장길">연무장길</option>
-      </select>
+      <!-- ARIA 콤보박스 속성은 js/region-combobox.js가 마운트하며 붙인다.
+           JS가 죽어도 이건 name="region"인 평범한 입력이라 GET 폼이 그대로 동작한다. -->
+      <label for="region-input" class="sr-only">지역</label>
+      <input id="region-input" name="region" type="text" autocomplete="off" placeholder="예: 성수동"
+             class="lg-inner basis-full px-4 text-body sm:basis-auto sm:w-[168px]">
 
       <label for="keyword-input" class="sr-only">키워드</label>
-      <input id="keyword-input" name="q" type="text" autocomplete="off" placeholder="파스타"
+      <input id="keyword-input" name="q" type="text" autocomplete="off" placeholder="파스타 · 가게 이름"
              class="lg-inner min-w-0 flex-1 px-4 text-body">
 
       <!-- 화면에서 가장 중요한 액션. 유리를 틴트하는 대신 불투명 황동 fill을 쓴다 —
@@ -83,7 +89,9 @@
          코드형(FD6·CE7)은 category_group_code로, 나머지는 키워드에 합쳐 보낸다 -->
     <div id="category-chips" role="group" aria-label="카테고리"
          class="no-scrollbar mt-2 flex gap-2 overflow-x-auto sm:flex-wrap sm:overflow-visible">
-      <button type="button" data-category="FD6" aria-pressed="true"  class="lg-chip px-4 text-caption">전체</button>
+      <!-- 전체는 빈 값이다. 코드를 안 걸어야 이름으로 카페·술집도 찾힌다.
+           키워드가 비면 kakao-places.js가 알아서 FD6(음식점)으로 떨어뜨린다. -->
+      <button type="button" data-category=""    aria-pressed="true"  class="lg-chip px-4 text-caption">전체</button>
       <button type="button" data-category="CE7" aria-pressed="false" class="lg-chip px-4 text-caption">카페</button>
       <button type="button" data-category="한식" aria-pressed="false" class="lg-chip px-4 text-caption">한식</button>
       <button type="button" data-category="일식" aria-pressed="false" class="lg-chip px-4 text-caption">일식</button>
@@ -104,7 +112,7 @@
        콘텐츠 레이어라 유리를 쓰지 않는다(§2.1). 크림 타일 위 화이트 면이다. -->
   <div id="state-idle" class="mt-6 rounded-card border border-hairline bg-white px-6 py-14 text-center">
     <p class="text-card-title font-semibold">아직 아무 데도 안 가봤습니다</p>
-    <p class="mt-3 text-body text-ink-72">동네를 고르고 찾기를 누르세요.</p>
+    <p class="mt-3 text-body text-ink-72">지역을 입력하고 찾기를 누르세요.</p>
   </div>
 
   <div id="state-loading" class="mt-6 rounded-card border border-hairline bg-white px-6 py-14 text-center" hidden>
@@ -115,6 +123,13 @@
   <div id="state-empty" class="mt-6 rounded-card border border-hairline bg-white px-6 py-14 text-center" hidden>
     <p class="text-card-title font-semibold">이 조건으로는 아직 찾은 곳이 없어요</p>
     <p class="mt-3 text-body text-ink-72">키워드를 줄이거나 카테고리를 넓혀 보세요.</p>
+  </div>
+
+  <!-- 지역이 자유 입력이 되면서 가장 흔해진 실패다. state-error로 묶으면
+       오타를 네트워크 탓으로 돌리게 된다. -->
+  <div id="state-noregion" class="mt-6 rounded-card border border-hairline bg-white px-6 py-14 text-center" hidden>
+    <p class="text-card-title font-semibold">그 지역을 찾지 못했습니다</p>
+    <p class="mt-3 text-body text-ink-72">동·구·시 이름으로 다시 써 보세요. 예를 들면 성수동, 강남구.</p>
   </div>
 
   <div id="state-error" class="mt-6 rounded-card border border-hairline bg-white px-6 py-14 text-center" hidden>
@@ -168,6 +183,35 @@
 </template>
 
 
+<!-- ── 지역 제안 패널 ────────────────────────────────
+     ⚠️ 반드시 <body> 직속이다. #filter-bar 안으로 옮기면 .lg의 contain:paint에
+        잘리고 isolation:isolate에 갇혀 화면에 안 나온다 — 에러는 안 난다.
+
+     유리가 아니라 흰 콘텐츠 면이다. 한 화면의 유리는 상단 바 + 필터 바로 2개를
+     이미 다 썼고, 필터 바에서 열리는 패널을 유리로 만들면 유리 위 유리가 된다.
+
+     left/top/bottom/width/max-height는 region-combobox.js가 계산해 넣는다.
+     그 외 생김새는 전부 styles.css의 #region-panel이 갖는다. -->
+<div id="region-panel" class="region-panel" hidden>
+  <ul id="region-listbox" role="listbox" aria-label="지역 제안" class="region-list"></ul>
+  <p data-region-note class="region-note" hidden></p>
+  <div class="region-foot">
+    <button type="button" data-region-clear class="region-clear" hidden>최근 검색 전체 지우기</button>
+  </div>
+</div>
+
+<!-- 패널 바깥이다. aria-live는 hidden이면 낭독되지 않으므로 패널과 생사를 같이하면 안 된다. -->
+<p id="region-status" role="status" aria-live="polite" class="sr-only"></p>
+
+<!-- 지역 제안 행. logic은 cloneNode 후 [data-field]에 textContent로만 값을 넣는다. -->
+<template id="tpl-region-option">
+  <li role="option" class="region-option">
+    <span data-field="label" class="region-option-label"></span>
+    <span data-field="detail" class="region-option-detail"></span>
+  </li>
+</template>
+
+
 <!-- 모바일에서는 하단 필터 툴바 위로 올라온다. bottom은 .toast-above-toolbar가 잡으므로
      Tailwind bottom-* 유틸리티를 붙이지 않는다. transform은 styles.css가 소유한다. -->
 <div id="toast" role="status" aria-live="polite" data-visible="false"
@@ -177,6 +221,7 @@
      빠지는 사고를 대비한 그물이다 — 404가 나도 JS 예외 대신 state-nokey를 띄운다. -->
 <script src="config.js" onerror="window.__kakaoConfigMissing = true"></script>
 <script src="js/kakao-places.js"></script>
+<script src="js/region-combobox.js"></script>
 <script src="js/search.js"></script>
 </body>
 </html>

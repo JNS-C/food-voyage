@@ -15,7 +15,17 @@
   'use strict';
 
   /** 한 번에 하나만 보인다. 결과가 있을 땐 전부 hidden. */
-  const STATE_IDS = ['state-idle', 'state-loading', 'state-empty', 'state-error', 'state-nokey'];
+  const STATE_IDS = [
+    'state-idle',
+    'state-loading',
+    'state-empty',
+    'state-noregion',
+    'state-error',
+    'state-nokey',
+  ];
+
+  /** 지역 입력 길이 상한. 검색어이지 문서가 아니다. */
+  const REGION_MAX = 40;
 
   /** 코드형 카테고리는 category_group_code로 보낸다. 나머지는 키워드에 합친다. */
   const CODE_CATEGORY = /^(FD6|CE7)$/;
@@ -33,6 +43,17 @@
 
   let toastTimer = null;
 
+  /** 콤보박스 핸들. 마크업이 아직 없으면 null이다 — 오류가 아니다. */
+  let combobox = null;
+
+  /**
+   * 드롭다운에서 고른 중심점. 있으면 지오코딩을 건너뛴다.
+   *
+   * 지역 텍스트가 바뀌는 순간 버려야 한다. 안 그러면 성수동을 고른 뒤 텍스트만
+   * 강남구로 고쳤을 때 성수동 좌표로 찾아 놓고 '강남구에서 15곳'이라고 쓴다.
+   */
+  let pendingCenter = null;
+
   /* ── DOM 조회 ───────────────────────────────────────── */
 
   /**
@@ -43,19 +64,49 @@
     return document.getElementById(id);
   }
 
-  function regionValues() {
-    const select = byId('region-select');
-    return select ? [...select.options].map((option) => option.value).filter(Boolean) : [];
+  /**
+   * 지역 입력. region-input이 없으면 옛 region-select를 그대로 읽는다.
+   *
+   * 이 폴백이 호환 레이어다. design이 아직 새 마크업을 올리지 않은 브랜치에서도
+   * 검색이 제안만 빠진 채 정상 동작한다. .value는 양쪽에서 똑같이 읽힌다.
+   */
+  function regionField() {
+    return byId('region-input') || byId('region-select');
   }
 
   /**
-   * URL 파라미터로 들어온 지역명을 검증한다. 목록에 없는 값이면 첫 동네로 떨어뜨린다 —
-   * 남이 보낸 링크의 ?region=아무거나로 엉뚱한 좌표를 조회하지 않는다.
+   * 제어문자와 개행을 걷어낸다.
+   *
+   * 정규식 대신 코드포인트로 거른다 — 제어문자 범위를 정규식 리터럴에 쓰려면
+   * 이스케이프가 필요하고, 그게 편집 과정에서 실제 제어 바이트로 굳으면
+   * 소스 파일이 조용히 바이너리가 된다. 여기서 한 번 겪었다.
+   */
+  function stripControl(text) {
+    let out = '';
+    for (const ch of text) {
+      const code = ch.codePointAt(0);
+      if (code >= 32 && code !== 127) out += ch;
+    }
+    return out;
+  }
+
+  /**
+   * 지역 문자열을 다듬는다. **검증이 아니라 정규화다.**
+   *
+   * 8/21 이전에는 select의 옵션 목록이 allowlist였다 — 남이 보낸 링크의
+   * ?region=아무거나로 엉뚱한 좌표를 조회하지 않게 막았다. 지역이 자유 입력이
+   * 된 이상 그 방어는 되돌릴 수 없다. '카카오가 해석할 수 있는 모든 지역'이
+   * 요구사항이면 모양을 미리 알 수 없기 때문이다.
+   *
+   * 남는 위험은 쿼터와 카카오 로그 노이즈다. XSS는 아니다(모든 출력이
+   * textContent 아니면 URLSearchParams다). 새로 생기는 위험은 최근 검색
+   * 하나뿐이라, 자동 검색 경로에서는 최근 검색에 쓰지 않는다(applyUrlParams 참조).
    */
   function resolveRegion(param) {
-    const values = regionValues();
-    if (values.length === 0) return '';
-    return values.includes(param) ? param : values[0];
+    return stripControl(String(param || ''))
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, REGION_MAX);
   }
 
   function chips() {
@@ -194,15 +245,32 @@
     return { keyword: [keyword, category].filter(Boolean).join(' '), categoryCode: '' };
   }
 
-  function runSearch() {
-    const select = byId('region-select');
-    const region = resolveRegion(select ? select.value : '');
+  /**
+   * @param {object} [options]
+   * @param {boolean} [options.record] 성공하면 최근 검색에 남길지. 자동 실행은 false다.
+   */
+  function runSearch(options) {
+    const record = !options || options.record !== false;
+    const field = regionField();
+
+    if (!field) {
+      // 필드 자체가 없는 건 design이 마크업을 편집하는 중이라는 뜻이지 오류가 아니다.
+      // 여기서 빨간 에러 화면을 띄우면 design이 자기 잘못인 줄 알고 되돌린다.
+      console.warn('[search] 지역 입력을 찾지 못했습니다. 검색을 건너뜁니다.');
+      setState('state-idle');
+      return;
+    }
+
+    const region = resolveRegion(field.value);
 
     if (!region) {
-      // select가 비어 있는 건 design이 마크업을 편집하는 중이라는 뜻이지 오류가 아니다.
-      // 여기서 빨간 에러 화면을 띄우면 design이 자기 잘못인 줄 알고 되돌린다.
-      console.warn('[search] #region-select에 선택 가능한 동네가 없습니다. 검색을 건너뜁니다.');
+      // 필드는 있는데 값이 비었다. 이건 마크업 문제가 아니라 그냥 빈 폼 제출이다 —
+      // 콘솔에 경고를 남길 일이 아니라 사용자에게 말할 일이다.
+      showSearchToast('지역을 입력해 주세요');
       setState('state-idle');
+      // URL에 옛 지역이 남아 있으면 화면과 링크가 다른 말을 한다. 같이 비운다.
+      syncUrl('', '', '');
+      field.focus();
       return;
     }
 
@@ -228,14 +296,25 @@
 
     const query = buildQuery(keyword, category);
 
+    // 텍스트가 확정된 라벨과 어긋나면 pendingCenter는 이미 null이 돼 있다.
+    // 여기서 한 번 더 확인하는 이유는 프로그램적으로 value를 바꾼 경로(applyUrlParams)가
+    // input 이벤트를 발생시키지 않기 때문이다.
+    const center = pendingCenter && pendingCenter.label === region ? pendingCenter : null;
+
     window.KakaoPlaces.searchPlaces({
       region,
+      center,
       keyword: query.keyword,
       categoryCode: query.categoryCode,
     })
       .then((places) => {
         if (token !== requestToken) return; // 이미 다음 검색이 시작됐다
         setBusy(false);
+
+        // 좌표를 몰라도 남긴다. 다음에 고를 때 지오코딩을 한 번 더 할 뿐이다.
+        if (record && combobox) {
+          combobox.remember(center || { label: region });
+        }
 
         if (places.length === 0) {
           renderPlaces([]);
@@ -253,9 +332,17 @@
         setBusy(false);
         renderPlaces([]);
         setCount('');
-        // 키가 없는 건 사용자가 고칠 수 있는 설정 문제다. 일반 오류와 화면을 나눈다.
-        setState(error && error.code === 'NO_KEY' ? 'state-nokey' : 'state-error');
-        if (!error || error.code !== 'NO_KEY') console.error('[search]', error);
+        // code로만 분기한다. message는 언제든 바뀌지만 code는 계약이다.
+        //   NO_KEY           설정 문제. 사용자가 config.js로 고칠 수 있다.
+        //   REGION_NOT_FOUND 오타. 지역이 자유 입력이 되면서 가장 흔해진 실패다.
+        //                    네트워크 에러 화면으로 묶으면 오타를 네트워크 탓으로 돌린다.
+        const code = (error && error.code) || '';
+        if (code === 'NO_KEY') setState('state-nokey');
+        else if (code === 'REGION_NOT_FOUND') setState('state-noregion');
+        else {
+          setState('state-error');
+          console.error('[search]', error);
+        }
       });
   }
 
@@ -270,11 +357,29 @@
     });
   }
 
-  /** select 변경만으로 바로 검색한다. 동네를 바꿨는데 옛 동네 결과가 남아 있으면 거짓말이다. */
+  /**
+   * select였을 땐 change 하나로 충분했다 — 고르는 순간이 곧 확정이었다.
+   * 텍스트 입력에서 change는 blur마다 터지므로, 탭으로 빠져나갈 때마다 검색이
+   * 나가게 된다. 입력에서는 아무것도 걸지 않는다 — 검색은 제출과 제안 선택으로만.
+   *
+   * SELECT 분기를 남겨 두는 이유는 호환 레이어다. 팀원이 아직 옛 마크업인
+   * 브랜치에서 이 JS를 써도 동작이 그대로여야 한다.
+   */
   function bindRegion() {
-    const select = byId('region-select');
-    if (!select) return;
-    select.addEventListener('change', runSearch);
+    const field = regionField();
+    if (!field) return;
+
+    if (field.tagName === 'SELECT') {
+      field.addEventListener('change', () => runSearch());
+      return;
+    }
+
+    // 텍스트가 확정된 라벨에서 벗어나면 좌표를 버린다. 이걸 안 하면 성수동을
+    // 고른 뒤 강남구로 고쳐 검색했을 때 성수동 좌표로 찾고 '강남구에서 15곳'이라
+    // 쓴다 — 결과가 틀렸다는 걸 화면 어디에서도 알 수 없는 형태의 버그다.
+    field.addEventListener('input', () => {
+      if (pendingCenter && pendingCenter.label !== field.value.trim()) pendingCenter = null;
+    });
   }
 
   function setActiveCategory(value) {
@@ -296,7 +401,9 @@
       const chip = event.target.closest('[data-category]');
       if (!chip || !group.contains(chip)) return;
       setActiveCategory(chip.getAttribute('data-category'));
-      runSearch();
+      // 칩만 바꾼 건 이미 한 검색을 좁히는 것이지 새 지역을 고른 게 아니다.
+      // 최근 검색은 지역 목록이므로 여기서 또 쌓지 않는다.
+      runSearch({ record: false });
     });
   }
 
@@ -345,9 +452,12 @@
     const params = new URLSearchParams(window.location.search);
     const hasParams = params.has('region') || params.has('q') || params.has('cat');
 
-    const select = byId('region-select');
+    const field = regionField();
     const region = resolveRegion(params.get('region') || '');
-    if (select && region) select.value = region;
+    if (field && region) field.value = region;
+
+    // 딥링크는 좌표를 모른다. 항상 새로 해석한다.
+    pendingCenter = null;
 
     const input = byId('keyword-input');
     if (input && params.has('q')) input.value = params.get('q') || '';
@@ -358,11 +468,41 @@
     return hasParams;
   }
 
+  /**
+   * 콤보박스를 붙인다. 실패해도(스크립트 미로드·마크업 미착) 검색은 그대로 간다 —
+   * 자동완성은 편의지 기반이 아니다. window.KakaoPlaces를 다루는 방식과 같다.
+   */
+  function mountCombobox() {
+    if (!window.RegionCombobox) {
+      console.warn('[search] region-combobox.js가 없습니다. 지역 제안 없이 진행합니다.');
+      return null;
+    }
+
+    return window.RegionCombobox.mount({
+      inputId: 'region-input',
+      panelId: 'region-panel',
+      listboxId: 'region-listbox',
+      statusId: 'region-status',
+      templateId: 'tpl-region-option',
+      onCommit: (hit) => {
+        pendingCenter = hit;
+        // 고른 항목은 콤보박스가 이미 최근 검색에 남겼다. 여기서 또 쌓지 않는다.
+        runSearch({ record: false });
+      },
+    });
+  }
+
   function init() {
     bindForm();
     bindRegion();
     bindChips();
     bindCards();
+
+    combobox = mountCombobox();
+    if (window.RegionCombobox && !combobox) {
+      // 마크업이 아직 안 왔다는 뜻이다. design 편집 중일 수 있으므로 오류로 다루지 않는다.
+      console.warn('[search] 지역 제안 마크업(#region-panel)이 없습니다. 평범한 입력으로 동작합니다.');
+    }
 
     // 파라미터가 없어도 폼 초기 상태(첫 칩 aria-pressed)는 맞춰 둔다.
     const hasParams = applyUrlParams();
@@ -381,7 +521,9 @@
       return;
     }
 
-    if (hasParams) runSearch();
+    // 자동 실행은 최근 검색에 남기지 않는다. 남기면 남이 보낸 링크 하나로
+    // 임의 문자열을 상대방 저장소에 심고 이후 방문마다 다시 그리게 할 수 있다.
+    if (hasParams) runSearch({ record: false });
     else setState('state-idle');
   }
 

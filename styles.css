@@ -398,6 +398,104 @@
   .above-toolbar.above-toolbar { padding-bottom: 80px; }
 }
 
+/* ── 지역 제안 패널 (DESIGN: region-suggest) ──
+   유리가 아니라 흰 콘텐츠 면이다. 한 화면의 유리 예산 2개는 상단 바와 필터 바가
+   이미 다 썼고, 필터 바에서 열리는 패널을 유리로 만들면 유리 위 유리가 된다(§2.2).
+
+   그래서 여기서 --lg-label 계열을 쓰지 않는다. 그건 어두운 유리 위 vibrancy 램프고,
+   이 패널은 밝은 면이라 DESIGN의 ink 램프가 맞다.
+
+   position/left/top/bottom/width/max-height는 region-combobox.js가 넣는다.
+   여기서 다시 잡으면 두 곳이 싸운다. */
+#region-panel {
+  position: fixed;
+  z-index: 35;                 /* 필터 바(30) 위, 토스트(50) 아래 */
+  overflow-y: auto;
+  padding: var(--lg-pad);
+  background: #FFFFFF;
+  border: 1px solid #E0D8C9;   /* hairline */
+  /* 동심(§5.2): 행이 --lg-r-control(14) + 패딩 8 → 22 = --lg-r-group.
+     필터 바와 같은 값이라 두 면이 같은 곡률로 읽힌다. */
+  border-radius: var(--lg-r-group);
+  /* 기능 레이어의 그림자 예외. 크림 배경 위 흰 면은 이게 없으면 평평한 얼룩이 된다. */
+  box-shadow: var(--lg-shadow);
+  /* 등장 애니메이션을 주지 않는다. hidden 속성으로만 여닫으므로 트랜지션이
+     걸리지 않고, 덕분에 유리 조상 아래 transform이 backdrop-filter를 죽이는
+     함정(§11.7-1)을 통째로 피한다. */
+}
+
+.region-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.region-option {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  min-height: var(--lg-target);   /* 44px */
+  padding: 6px 12px;
+  border-radius: var(--lg-r-control);
+  cursor: pointer;
+}
+
+.region-option-label {
+  font-size: 17px;                /* body */
+  letter-spacing: -0.2px;
+  color: #1C1A17;                 /* ink */
+}
+
+.region-option-detail {
+  font-size: 14px;                /* caption */
+  letter-spacing: -0.1px;
+  color: #6B6459;                 /* ink-48 */
+}
+
+/* 키보드 이동에는 hover가 생기지 않는다. :hover와 규칙을 합치면
+   화살표로 훑을 때 아무것도 강조되지 않는다. 반드시 별개다. */
+.region-option[aria-selected="true"] {
+  background: #EFE8DB;            /* divider-soft */
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .region-option:hover { background: #F4EFE6; }  /* cream */
+}
+
+.region-note {
+  margin: 0;
+  padding: 12px;
+  font-size: 14px;
+  letter-spacing: -0.1px;
+  color: #6B6459;
+}
+
+.region-foot:has(> [hidden]) { display: none; }
+
+.region-clear {
+  width: 100%;
+  min-height: var(--lg-target);
+  margin-top: 4px;
+  border-top: 1px solid #EFE8DB;
+  font-size: 14px;
+  letter-spacing: -0.1px;
+  color: #6B6459;
+  cursor: pointer;
+}
+
+.region-clear:focus-visible {
+  /* 밝은 면이므로 accent-focus다. --lg-focus(#E0A85C)는 네이비 위 전용이라
+     여기 쓰면 대비가 모자란다. */
+  outline: 2px solid #C97B3E;
+  outline-offset: -2px;
+  border-radius: var(--lg-r-control);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .region-clear:hover { color: #1C1A17; }
+}
+
 /* 색면 썸네일. 놓인 물체가 아니라 빈 자리 표시이므로 그림자가 없다. */
 [data-field="thumb"][data-tone="0"] { background-color: var(--tone-0); }
 [data-field="thumb"][data-tone="1"] { background-color: var(--tone-1); }
@@ -434,6 +532,10 @@
   /* 뒤가 비치지 않으면 이 레이어는 그냥 흐릿한 띠다. 지운다. */
   .lg-scroll-edge { display: none; }
 
+  /* #region-panel은 여기 오버라이드가 없다. 애초에 불투명 흰 면이라 이 설정에서
+     바뀔 것이 없기 때문이다. 나중에 반투명을 얹는다면 여기에 되돌리는 규칙을
+     같이 넣어야 한다. */
+
   /* 불투명 면 위에서는 한 단계 밝은 네이비(deep-2/deep-3)로 단차를 만든다 —
      어두운 타일이 겹칠 때 쓰라고 DESIGN이 정의해 둔 미세 단차다. */
   .lg-inner        { background: #121F33; box-shadow: inset 0 0 0 1px var(--lg-separator); }
@@ -452,6 +554,17 @@
   }
   .lg-inner { background: rgba(255, 255, 255, 0.22); box-shadow: inset 0 0 0 1px var(--lg-separator); }
   .lg-chip  { background: rgba(255, 255, 255, 0.22); box-shadow: inset 0 0 0 1px var(--lg-separator); }
+
+  /* 강제 고대비 렌더링에서는 배경 틴트만으로 선택 항목이 구분되지 않는 일이 있다.
+     테두리 링을 하나 더 그려 색에만 기대지 않게 한다. */
+  #region-panel { border-color: #1C1A17; }
+  .region-option[aria-selected="true"] {
+    background: #EAE1D2;
+    box-shadow: inset 0 0 0 2px #1C1A17;
+  }
+  .region-option-detail,
+  .region-note,
+  .region-clear { color: #4A453C; }
 }
 
 @media (prefers-reduced-motion: reduce) {
