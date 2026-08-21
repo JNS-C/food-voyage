@@ -43,8 +43,8 @@
   }
 
   /**
-   * config.js는 .gitignore 대상이라 아예 없을 수 있다. 그 경우 404가 나고
-   * search.html의 onerror가 __kakaoConfigMissing을 세운다.
+   * config.js가 배포에서 누락되면 404가 나고, search.html의 onerror가
+   * __kakaoConfigMissing을 세운다. 키가 빈 문자열일 때와 같은 취급이다.
    */
   function readKey() {
     if (window.__kakaoConfigMissing) return '';
