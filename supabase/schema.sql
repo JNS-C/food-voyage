@@ -25,6 +25,19 @@ create table public.profiles (
 );
 
 
+-- ── 테이블 권한 ─────────────────────────────────────────
+-- GRANT 와 RLS 는 다른 층이다. GRANT 는 "이 역할이 이 **테이블**을 만질 수
+-- 있는가", RLS 는 "그중 어느 **행**인가"를 정한다. 둘 다 있어야 한다.
+--
+-- 정책만 만들고 GRANT 를 빠뜨리면 PostgREST 가
+--   42501 permission denied for table profiles
+-- 로 막는다. 대시보드의 Policies 화면에는 정책 3개가 멀쩡히 보이기 때문에
+-- 원인이 정책 쪽이 아니라는 걸 알아채기 어렵다.
+grant select on public.profiles to anon, authenticated;
+grant insert, update on public.profiles to authenticated;
+-- delete 는 주지 않는다. 대응하는 정책이 없고, 지울 일이 생기면 그때 정한다.
+
+
 -- ── RLS ─────────────────────────────────────────────────
 alter table public.profiles enable row level security;
 
