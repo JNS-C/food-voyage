@@ -70,27 +70,32 @@
    * search.js의 실제 관례를 그대로 따른다: 프래그먼트 전체를 복제하고
    * querySelector로 카드 루트를 찾은 뒤 프래그먼트째 append한다.
    */
-  function renderRow(row) {
+  function renderRow(row, index) {
     const fragment = byId('tpl-saved-card').content.cloneNode(true);
     const card = fragment.querySelector('[data-card]');
     card.dataset.placeId = row.place_id;
+
+    // 색면 3단계 순환 + 첫 글자 — 검색 결과 행과 같은 문법이다.
+    const thumb = fragment.querySelector('[data-field="thumb"]');
+    if (thumb) thumb.setAttribute('data-tone', String(index % 3));
+    const initial = fragment.querySelector('[data-field="initial"]');
+    if (initial) initial.textContent = Array.from(String(row.place_name || '').trim())[0] || '';
 
     fragment.querySelector('[data-field="name"]').textContent = row.place_name;
     fragment.querySelector('[data-field="address"]').textContent = row.address || '';
     fragment.querySelector('[data-field="category"]').textContent = row.category || '';
     fragment.querySelector('[data-field="date"]').textContent = formatSavedDate(row.created_at);
 
-    // 좌표만 넘기면 Google Maps가 이름 없는 핀 하나만 찍는다. 가게 이름 +
-    // 주소를 텍스트로 넘기면 검색창에 직접 친 것처럼 실제 장소 정보 카드
-    // (이름·사진·리뷰)로 연결된다. place_id로 정확히 짚는 방법(query_place_id)도
-    // 있지만 그건 Google Place ID가 필요한데 우리가 가진 건 카카오 ID뿐이라
-    // 별도 API 연동이 필요해진다 — 오늘 범위 밖이다.
+    // 검색 결과와 같은 카카오맵으로 통일했다(8/24). place_id가 카카오 장소
+    // ID라서 place.map.kakao.com/{id}가 정확히 그 가게 페이지로 간다 —
+    // 이름+주소 텍스트 검색(옛 구글맵 방식)처럼 엉뚱한 곳에 떨어질 일이 없다.
+    // 단, 더미 시딩의 seed- 접두사 id는 카카오에 없는 가게라 링크를 걷는다.
     const maps = fragment.querySelector('[data-field="maps"]');
-    const mapsQuery = [row.place_name, row.address].filter(Boolean).join(' ');
-    if (mapsQuery) {
-      maps.href = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(mapsQuery);
+    const id = String(row.place_id || '');
+    if (id && !id.startsWith('seed-')) {
+      maps.href = 'https://place.map.kakao.com/' + encodeURIComponent(id);
+      maps.setAttribute('aria-label', row.place_name + ' 카카오맵에서 보기');
     } else {
-      // place_name은 NOT NULL이라 사실상 항상 참이지만, 방어적으로 남겨 둔다.
       maps.hidden = true;
     }
     return fragment;
@@ -127,7 +132,7 @@
 
     const grid = byId('result-grid');
     grid.textContent = '';
-    (data || []).forEach((row) => grid.appendChild(renderRow(row)));
+    (data || []).forEach((row, index) => grid.appendChild(renderRow(row, index)));
 
     setState(data && data.length ? null : 'empty');
   }

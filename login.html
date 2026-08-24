@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>로그인 — food-voyage</title>
 <meta name="description" content="계정을 만들면 항해일지가 남습니다.">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<meta name="theme-color" content="#0F1B2D">
 <meta name="robots" content="noindex">
 
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css">
@@ -132,8 +134,10 @@
           <p class="mt-2 text-fine text-ink-48">자주 다니는 동네입니다. 나중에 바꿀 수 있습니다.</p>
         </div>
 
+        <!-- 에러가 페이지에서 가장 잘 읽혀야 한다. 황동 14px는 크림 위 3.53:1로
+             가장 안 읽히는 텍스트였다 → 먹색 세미볼드(15.9:1). -->
         <p id="auth-error" role="alert" aria-live="assertive"
-           class="text-caption text-accent" hidden></p>
+           class="text-caption font-semibold text-ink" hidden></p>
 
         <!-- 이 화면의 유일한 주요 액션이므로 채움을 갖는다 (button-primary). -->
         <button id="auth-submit" type="submit"
@@ -144,8 +148,9 @@
 
       <p class="mt-6 text-center text-caption text-ink-48">
         <span id="auth-switch-hint">아직 계정이 없나요?</span>
+        <!-- 밝은 면 위 텍스트 링크는 ink-72 + 밑줄 (14px 황동은 대비 미달) -->
         <button id="auth-switch" type="button"
-                class="ml-1 text-caption text-accent underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-focus">회원가입</button>
+                class="ml-1 text-caption font-semibold text-ink-72 underline underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-focus">회원가입</button>
       </p>
     </div>
 
@@ -158,9 +163,10 @@
         링크를 누르면 가입이 끝납니다.
       </p>
       <p class="mt-3 text-caption text-ink-48">메일이 안 보이면 스팸함도 확인해 주세요.</p>
-      <!-- 보조 동작이라 button-quiet다. 테두리를 넣지 않는다. -->
+      <!-- 보조 동작이라 button-quiet다. 테두리를 넣지 않는다.
+           황동 17px는 흰 위 4.05:1로 미달 → ink-72 세미볼드. -->
       <button id="auth-resend" type="button"
-              class="press mt-6 inline-flex h-11 items-center rounded-full px-[26px] text-btn text-accent transition duration-200 disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-focus">
+              class="press mt-6 inline-flex h-11 items-center rounded-full px-[26px] text-btn font-semibold text-ink-72 transition duration-200 disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-focus">
         인증 메일 다시 보내기
       </button>
     </div>

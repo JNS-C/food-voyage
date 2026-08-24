@@ -104,6 +104,55 @@
   --tone-2: #E3D8C6;
 }
 
+/* 한국어 조판: 단어 중간에서 꺾지 않는다. 어절 단위 줄바꿈이 기본이고,
+   URL·영문 장문만 overflow-wrap이 받아 준다. */
+body {
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+
+/* 모바일 더블탭 줌 대기(300ms)를 없앤다. 탭이 곧 액션인 컨트롤 전부. */
+a, button, input, [role="button"] {
+  touch-action: manipulation;
+}
+
+/* 상단 바 항목은 어떤 폭에서도 줄바꿈하지 않는다 — "맛집 찾기"가 두 줄로
+   꺾이면 바가 두 배로 두꺼워진다. 420px 미만에서는 여백을 조여 로그인
+   상태의 4개 항목(워드마크+링크 3개)이 한 줄에 들어가게 한다.
+   .lg .lg-bar-inner 특이도(0-2-0)라 Play CDN 유틸리티(px-6 등)를 이긴다. */
+.lg .lg-bar-inner a,
+.lg .lg-bar-inner button,
+.lg .lg-bar-inner span {
+  white-space: nowrap;
+}
+
+@media (max-width: 419px) {
+  .lg .lg-bar-inner { padding-inline: 16px; }
+  .lg .lg-bar-inner .lg-link { padding-inline: 10px; }
+  .lg .lg-bar-inner .font-wordmark { font-size: 18px; }
+}
+
+/* 히어로 부제는 어떤 폭에서도 한 줄이다(8/24 결정 — 두 줄로 쪼개지 않는다).
+   문장 폭이 약 20em이므로 화면 폭에서 크기를 유도한다: 390px에서 ~14.5px,
+   580px쯤부터 24px(기존 lead 크기) 상한. Play CDN 유틸리티가 뒤에 주입되므로
+   크기·행간을 여기서 전부 소유한다 — 마크업에 text-lead를 같이 두면 진다. */
+.hero-tagline {
+  white-space: nowrap;
+  font-size: min(24px, calc((100vw - 100px) / 20));
+  line-height: 1.5;
+  letter-spacing: -0.2px;
+}
+
+/* 검색 화면 타이틀 부제도 한 줄이다(8/25 결정). 문장 폭이 약 28em이라
+   랜딩(20em)과 계수가 다르다: 390px에서 ~11.9px, 448px쯤부터 caption(14px) 상한.
+   패딩은 그 구간의 px-6(24×2)이 기준이다. */
+.search-tagline {
+  white-space: nowrap;
+  font-size: min(14px, calc((100vw - 56px) / 28));
+  line-height: 1.5;
+  letter-spacing: -0.1px;
+}
+
 /* 블러는 절대값이 아니라 표면 크기 대비로 읽힌다(§11.3).
    폭이 넓어지면 같은 "두께"로 읽히기 위해 블러도 커져야 한다. */
 @media (min-width: 640px)  { :root { --lg-blur: 22px; --lg-bar-h: 64px; } }
@@ -361,11 +410,13 @@
   transform: translate(-50%, 0);
 }
 
-/* 검색 페이지는 모바일에서 하단이 필터 툴바다. 토스트를 그 위로 올린다.
+/* 8/24: 하단 고정 툴바가 사라져 토스트도 바닥 근처로 내려온다. 이름은
+   계약이라 유지한다(세 페이지가 참조). 지도 토글 pill(오른쪽 하단)과
+   겹치지 않게 조금만 띄운다.
    Tailwind bottom-* 유틸리티를 함께 쓰면 나중에 주입되는 유틸리티가 이기므로,
    이 클래스를 쓰는 쪽은 bottom을 마크업에 두지 않는다. */
 .toast-above-toolbar {
-  bottom: calc(210px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
 }
 @media (min-width: 640px) {
   .toast-above-toolbar { bottom: 32px; }
@@ -377,18 +428,17 @@
    ============================================================ */
 
 /* 필터 바 — 유리를 쓰는 두 번째 자리.
-   모바일은 하단 툴바, 포인터·넓은 폭은 상단 고정이다(§11.2 · §8.6).
-   역할은 그대로 두고 형태만 바꾼다.
+   8/24 개편: 모바일 하단 고정 툴바를 걷었다 — 결과의 1/4을 상시 가리고
+   있었다. 이제 모바일은 히어로(네이비 타이틀 타일) 안에 앉는 인플로우
+   요소다: search.html이 타일의 하단 여백을 늘리고 바를 음수 마진으로
+   끌어올린다. 스크롤하면 히어로와 함께 올라가 결과가 화면 전체를 쓴다.
+   포인터·넓은 폭(640+)은 기존대로 상단 sticky — 목록을 스크롤해도 검색이
+   손에 남는다.
 
    위치를 Tailwind가 아니라 여기서 잡는 이유: 유틸리티가 이 파일 뒤에 주입되므로
-   position/inset을 클래스로 걸면 두 형태가 서로를 덮어쓴다. ID면 안전하다. */
+   position을 클래스로 걸면 두 형태가 서로를 덮어쓴다. ID면 안전하다. */
 #filter-bar {
-  position: fixed;
-  z-index: 30;
-  inset-inline: 12px;
-  bottom: calc(12px + env(safe-area-inset-bottom, 0px));  /* 홈 인디케이터 회피(§11.6) */
-  /* 상단 바와 달리 이 유리는 네이비 타일 위에 얹힐 기회가 없다 — 언제나
-     크림·화이트 콘텐츠 위다. 기본 fill(0.76)이면 늘 회색으로 씻겨 떠서
+  /* 스크롤로 크림 위에 얹혔을 때 기본 fill(0.76)이면 회색으로 씻겨 떠서
      랜딩의 네이비 면과 다른 색으로 읽힌다. 강한 fill로 네이비 면을 지킨다.
      새 값이 아니라 기존 토큰(--lg-fill-strong)의 재사용이다. */
   --lg-fill: var(--lg-fill-strong);
@@ -397,17 +447,17 @@
 @media (min-width: 640px) {
   #filter-bar {
     position: sticky;
-    inset-inline: auto;
-    bottom: auto;
+    z-index: 30;
     /* 상단 바와의 간격을 --lg-pad의 두 배로 둔다.
        유리 요소는 가까이 놓이면 하나로 합쳐져 읽힌다(§7.3). 여기서는 별개여야 한다. */
     top: calc(var(--lg-bar-h) + env(safe-area-inset-top, 0px) + var(--lg-pad) * 2);
   }
 }
 
-/* 결과 그리드가 하단 툴바에 가리지 않게 비워 둔다. */
+/* 하단 고정 툴바가 사라졌으므로 큰 여백(200px)도 함께 걷는다. 홈 인디케이터
+   회피(§11.6)만 남긴다. */
 .above-toolbar.above-toolbar {
-  padding-bottom: calc(200px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(40px + env(safe-area-inset-bottom, 0px));
 }
 @media (min-width: 640px) {
   .above-toolbar.above-toolbar { padding-bottom: 80px; }
@@ -582,21 +632,24 @@
     top: calc(var(--lg-bar-h) + env(safe-area-inset-top, 0px) + 24px);
     height: calc(100vh - var(--lg-bar-h) - env(safe-area-inset-top, 0px) - 48px);
   }
+  /* PC에서는 지도가 화면 오른쪽 끝까지 간다(8/24 결정 — 남는 여백 없이).
+     main이 lg:pr-0이므로 오른쪽 모서리에 붙는다 — 붙는 쪽 라운드·보더를 걷는다. */
   #map-panel {
     display: block;
     height: 100%;
-    border-radius: 18px;          /* rounded-card */
+    border-radius: 18px 0 0 18px;   /* rounded-card, 오른쪽만 직각 */
     border: 1px solid #E0D8C9;
+    border-right: 0;
     overflow: hidden;
   }
 }
 
-/* 모바일 전용 지도 토글. 하단 필터 바(bottom 12 + 높이 ~150) 바로 위 오른쪽.
+/* 모바일 전용 지도 토글. 하단 툴바가 사라졌으므로(8/24) 바닥 오른쪽에 뜬다.
    deep 단색 pill — 유리 예산(2개)·황동 채움(1개) 밖의 재질. lg에서는 숨김. */
 #map-toggle {
   position: fixed;
   right: 16px;
-  bottom: calc(170px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
   z-index: 31;
   height: 44px;
   padding: 0 20px;

@@ -1,0 +1,11 @@
+<!-- 브랜드 파비콘: 딥 네이비 타일 위 밝은 황동 닻 — index.html의 #icon-anchor
+     글리프 패스 그대로다. SVG 하나로 모든 해상도를 감당한다. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="14" fill="#0F1B2D"/>
+  <g fill="none" stroke="#E0A85C" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" transform="translate(8 7) scale(2)">
+    <circle cx="12" cy="4.1" r="2.3"/>
+    <path d="M12 6.4V21"/>
+    <path d="M7.2 9.6h9.6"/>
+    <path d="M4 13.4c0 4.3 3.6 7.6 8 7.6s8-3.3 8-7.6"/>
+  </g>
+</svg>

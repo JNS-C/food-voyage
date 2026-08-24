@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>담은 곳 — food-voyage</title>
 <meta name="description" content="담아 둔 가게를 모아 봅니다.">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<meta name="theme-color" content="#0F1B2D">
 <meta name="robots" content="noindex">
 
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css">
@@ -102,9 +104,10 @@
     </a>
   </div>
 
-  <!-- 3열 → 2열(≤1023px) → 1열(≤639px). search.html #result-grid와 같은 반응형 규칙이다. -->
+  <!-- 검색 결과와 같은 리스트형 행 카드다(8/24 통일). 같은 '가게'가 페이지마다
+       다른 문법으로 보이지 않게 한다. 폭은 TOP5 랭킹과 같은 720px 상한. -->
   <div id="result-grid" aria-busy="false"
-       class="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3"></div>
+       class="mt-6 flex max-w-[720px] flex-col gap-3"></div>
 
 </main>
 
@@ -113,31 +116,34 @@
      logic: cloneNode 후 [data-field]에 textContent로만 값을 넣는다.
      design: data-field 속성명은 유지하고 클래스·구조는 자유. -->
 <template id="tpl-saved-card">
-  <!-- 플레인 article이다. role="button"·tabindex를 안 둔다 — search.html 카드가
-       그걸 쓰는 건 카드 전체가 (아직 없는) 상세 페이지로 가는 클릭 대상이기
-       때문이고, 그 파일 자체가 "중첩 인터랙티브라 이상적이지 않다"고 적어 뒀다.
-       이 카드는 전체 클릭 동작이 없다 — 삭제 버튼과 구글맵 링크, 둘 다 진짜
-       인터랙티브 요소라 그 문제 자체가 생기지 않는다. -->
-  <article data-card class="rounded-card border border-hairline bg-white p-5">
-    <div class="flex items-start justify-between gap-3">
-      <h3 data-field="name" class="text-card-title font-semibold"></h3>
-      <!-- 채움을 쓰지 않는다 — 이 화면의 채움은 빈 상태의 '맛집 찾으러 가기' 하나뿐이다.
-           카드가 여러 장이면 삭제 버튼도 여러 개라, 전부 채우면 "화면당 하나"
-           규칙과 부딪힌다. 그래서 조용한 아이콘형 버튼으로 둔다. -->
-      <button type="button" data-remove aria-label="담기 취소"
-              class="press inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-ink-48 transition duration-200 hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-focus">
-        <span aria-hidden="true" class="text-card-title leading-none">×</span>
-      </button>
+  <!-- 검색 결과(#tpl-place-card)와 같은 리스트형 행이다(8/24 통일). 플레인
+       article — 전체 클릭 동작이 없고, 삭제 버튼과 카카오맵 링크가 진짜
+       인터랙티브 요소라 중첩 인터랙티브 문제가 생기지 않는다. -->
+  <article data-card class="flex items-center gap-3 rounded-card border border-hairline bg-white p-3">
+    <div data-field="thumb" data-tone="0" aria-hidden="true"
+         class="flex h-[72px] w-[72px] shrink-0 items-center justify-center rounded-photo">
+      <span data-field="initial" class="text-card-title font-semibold text-ink-48"></span>
     </div>
-    <p data-field="address" class="mt-2 text-caption text-ink-72"></p>
-    <p class="mt-3 text-caption text-ink-48">
-      <span data-field="category"></span><span data-field="dot"> · </span><span data-field="date"></span>
-    </p>
-    <!-- 좌표가 없는 행(카카오 좌표 파싱 실패)이면 logic이 hidden을 켠다. -->
-    <a data-field="maps" href="#" target="_blank" rel="noopener"
-       class="mt-4 inline-flex h-11 items-center text-caption text-accent underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-focus">
-      구글맵 보기
-    </a>
+
+    <div class="min-w-0 flex-1">
+      <h3 data-field="name" class="truncate text-body font-semibold"></h3>
+      <p class="mt-1 flex min-w-0 items-center gap-1.5 text-caption text-ink-48">
+        <span data-field="category" class="shrink-0"></span>
+        <span data-field="dot" aria-hidden="true">·</span>
+        <span data-field="date" class="shrink-0"></span>
+        <!-- 검색 결과와 같은 카카오맵으로 통일(구글맵 → place.map.kakao.com).
+             밝은 면 위 텍스트 링크는 ink 밑줄 — 14px 황동은 대비 미달이다. -->
+        <a data-field="maps" href="#" target="_blank" rel="noopener"
+           class="ml-1 shrink-0 py-2 text-caption text-ink-48 underline underline-offset-4">카카오맵</a>
+      </p>
+      <p data-field="address" class="mt-0.5 truncate text-fine text-ink-48"></p>
+    </div>
+
+    <!-- 채움을 쓰지 않는다 — 이 화면의 채움은 빈 상태의 '맛집 찾으러 가기' 하나뿐이다. -->
+    <button type="button" data-remove aria-label="담기 취소"
+            class="press flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-ink-48 transition duration-200 hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-focus">
+      <span aria-hidden="true" class="text-card-title leading-none">×</span>
+    </button>
   </article>
 </template>
 

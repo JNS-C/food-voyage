@@ -37,6 +37,14 @@
   const RADIUS_STEPS = [800, 1500, 3000];
 
   /**
+   * 정렬 칩의 순환 목록. 거리·정확도는 카카오의 서버 정렬이고, 인기(POPULAR)는
+   * 우리 데이터다 — 카카오에는 거리순으로 요청하고 받은 15곳을 담김 수로
+   * 재정렬한다. 그래서 인기순은 "반경 내 인기 상위 15"가 아니라
+   * "가까운 15곳의 인기순 재배열"이다(카카오 15건 상한).
+   */
+  const SORT_CYCLE = ['DISTANCE', 'ACCURACY', 'POPULAR'];
+
+  /**
    * 검색이 겹칠 때 늦게 도착한 옛 응답이 새 결과를 덮어쓰는 걸 막는다.
    * 칩을 연타하면 실제로 일어난다.
    */
@@ -174,7 +182,9 @@
   }
 
   function fmtSort(sort) {
-    return sort === 'ACCURACY' ? '정확도순' : '거리순';
+    if (sort === 'ACCURACY') return '정확도순';
+    if (sort === 'POPULAR') return '인기순';
+    return '거리순';
   }
 
   /**
@@ -191,7 +201,8 @@
     node.append(
       strong,
       document.createTextNode(
-        meta.sort === 'ACCURACY' ? ` · ${count}곳 · 정확도순` : ` · 가까운 ${count}곳 · 거리순`
+        // "가까운"은 거리순에서만 참말이다.
+        meta.sort === 'DISTANCE' ? ` · 가까운 ${count}곳 · 거리순` : ` · ${count}곳 · ${fmtSort(meta.sort)}`
       )
     );
 
@@ -237,10 +248,40 @@
     if (sortChip) {
       sortChip.addEventListener('click', () => {
         if (!lastMeta) return;
-        userSort = lastMeta.sort === 'DISTANCE' ? 'ACCURACY' : 'DISTANCE';
+        // 표시 중인 정렬(lastMeta.sort — 인기순이면 'POPULAR')의 다음 항목으로.
+        const at = SORT_CYCLE.indexOf(lastMeta.sort);
+        userSort = SORT_CYCLE[(at + 1) % SORT_CYCLE.length];
         runSearch({ record: false });
       });
     }
+  }
+
+  /**
+   * 검색 결과에 담김 수를 붙인다. 배지와 인기순 재정렬의 재료다.
+   * get_save_counts는 get_top_places와 같은 익명 집계 RPC라 비로그인에서도 된다.
+   * 실패해도 검색은 그대로 간다 — 반환 false로 알리고 배지만 빠진다.
+   */
+  function attachSaveCounts(places) {
+    places.forEach((place) => {
+      place.saveCount = 0;
+    });
+    if (places.length === 0 || !window.FvAuth || !window.FvAuth.isConfigured()) {
+      return Promise.resolve(true);
+    }
+    return window.FvAuth._client
+      .rpc('get_save_counts', { place_ids: places.map((place) => String(place.id)) })
+      .then(({ data, error }) => {
+        if (error) throw error;
+        const counts = new Map((data || []).map((row) => [String(row.place_id), Number(row.save_count) || 0]));
+        places.forEach((place) => {
+          place.saveCount = counts.get(String(place.id)) || 0;
+        });
+        return true;
+      })
+      .catch((error) => {
+        console.warn('[search] 담김 수를 불러오지 못했습니다.', error && error.message);
+        return false;
+      });
   }
 
   /* ── 거점 칩(통합 pill) ─────────────────────────────── */
@@ -326,22 +367,47 @@
     toggle.hidden = lastPlaces.length === 0;
   }
 
-  function setMapOpen(open) {
+  /**
+   * @param {boolean} open
+   * @param {object} [options]
+   * @param {boolean} [options.fromPop] popstate가 출발점이면 true — 히스토리를
+   *        다시 건드리지 않는다(무한 루프 방지).
+   *
+   * 전체 화면 오버레이는 모바일에서 뒤로가기로 닫혀야 한다. 안 그러면 back이
+   * 지도를 닫는 대신 페이지를 떠난다 — 열 때 히스토리에 한 칸을 쌓고,
+   * popstate가 오면 닫는다. 버튼으로 닫을 때는 그 칸을 back()으로 걷어
+   * 히스토리에 빈 칸이 남지 않게 한다.
+   */
+  function setMapOpen(open, options) {
+    const fromPop = !!(options && options.fromPop);
     const panel = byId('map-panel');
     const toggle = byId('map-toggle');
     if (!panel) return;
+
+    if (!open && !fromPop && history.state && history.state.fvMapOpen) {
+      // 쌓아 둔 칸을 소비한다 — popstate 핸들러가 실제 닫기를 수행한다.
+      history.back();
+      return;
+    }
+
     panel.dataset.open = open ? 'true' : 'false';
     if (toggle) {
       toggle.setAttribute('aria-pressed', open ? 'true' : 'false');
       toggle.textContent = open ? '목록으로' : '지도로 보기';
     }
-    if (open && window.FvSearchMap) window.FvSearchMap.relayout();
+    if (open) {
+      if (!fromPop) history.pushState({ fvMapOpen: true }, '', window.location.href);
+      if (window.FvSearchMap) window.FvSearchMap.relayout();
+    }
   }
 
   function bindMapToggle() {
     const toggle = byId('map-toggle');
-    if (!toggle) return;
-    toggle.addEventListener('click', () => setMapOpen(!mapOpen()));
+    if (toggle) toggle.addEventListener('click', () => setMapOpen(!mapOpen()));
+
+    window.addEventListener('popstate', () => {
+      if (mapOpen()) setMapOpen(false, { fromPop: true });
+    });
   }
 
   /* ── 행 ↔ 핀 선택 연동 ──────────────────────────────── */
@@ -445,6 +511,16 @@
         distanceNode.hidden = !label;
       }
 
+      // 담김 배지. 0명이면 숨긴다 — 빈 자랑은 소음이다.
+      const saveBadge = fragment.querySelector('[data-field="savecount"]');
+      if (saveBadge) {
+        const saves = Number(place.saveCount) || 0;
+        const num = saveBadge.querySelector('[data-savecount-num]');
+        if (num) num.textContent = String(saves);
+        saveBadge.hidden = saves === 0;
+        saveBadge.setAttribute('aria-label', `${saves}명이 담았어요`);
+      }
+
       // 카테고리가 비면 구분점(·)도 같이 걷는다.
       const sep = fragment.querySelector('[data-sep]');
       if (sep) sep.hidden = !place.category;
@@ -483,7 +559,9 @@
     if (category) params.set('cat', category);
 
     const query = params.toString();
-    history.replaceState(null, '', query ? `?${query}` : window.location.pathname);
+    // state를 null로 덮지 않는다 — 지도 오버레이가 쌓아 둔 fvMapOpen 표식이
+    // 지도 위에서 재검색할 때 지워지면 back이 지도를 닫지 못하게 된다.
+    history.replaceState(history.state, '', query ? `?${query}` : window.location.pathname);
   }
 
   /* ── 검색 ───────────────────────────────────────────── */
@@ -571,39 +649,62 @@
       keyword: query.keyword,
       categoryCode: query.categoryCode,
       radius: userRadius,
-      sort: userSort,
+      // 인기순은 카카오에 없는 정렬이다 — 요청은 거리순으로 보내고 받아서 재정렬한다.
+      sort: userSort === 'POPULAR' ? 'DISTANCE' : userSort,
     })
       .then(({ places, meta }) => {
         if (token !== requestToken) return; // 이미 다음 검색이 시작됐다
-        setBusy(false);
 
-        // 좌표를 몰라도 남긴다. 다음에 고를 때 지오코딩을 한 번 더 할 뿐이다.
-        if (record && combobox) {
-          combobox.remember(center || { label: region });
-        }
+        // 담김 수는 어느 정렬에서든 배지로 보여준다(8/24). 인기순의 재료이기도 하다.
+        return attachSaveCounts(places).then((countsOk) => {
+          if (token !== requestToken) return;
+          setBusy(false);
 
-        lastMeta = meta;
-        lastPlaces = places;
-        lastSearchedRegion = region;
-        selectedPlaceId = null;
+          // 좌표를 몰라도 남긴다. 다음에 고를 때 지오코딩을 한 번 더 할 뿐이다.
+          if (record && combobox) {
+            combobox.remember(center || { label: region });
+          }
 
-        // 검색이 성공했다 = 거점이 확정됐다. region 입력이 칩으로 바뀐다.
-        setAnchorChip(region);
-        // 0건이어도 칩은 남긴다 — "반경을 넓히거나"가 바로 실행 가능한 조언이 된다.
-        syncResultControls(true);
-        updateMap();
-        syncMapToggle();
+          let list = places;
+          let displaySort = meta.sort;
+          if (userSort === 'POPULAR') {
+            if (countsOk) {
+              // 담김 수 → 거리 → id. 담김 0이 대부분인 구간은 거리순이 그대로 산다.
+              list = places.slice().sort((a, b) =>
+                (b.saveCount - a.saveCount)
+                || ((Number.isFinite(a.distance) ? a.distance : Infinity)
+                    - (Number.isFinite(b.distance) ? b.distance : Infinity))
+                || String(a.id).localeCompare(String(b.id))
+              );
+              displaySort = 'POPULAR';
+            } else {
+              showSearchToast('인기 정보를 불러오지 못해 거리순으로 보여드립니다');
+            }
+          }
 
-        if (places.length === 0) {
-          renderPlaces([]);
-          setCount('');
-          setState('state-empty');
-          return;
-        }
+          lastMeta = Object.assign({}, meta, { sort: displaySort });
+          lastPlaces = list;
+          lastSearchedRegion = region;
+          selectedPlaceId = null;
 
-        renderPlaces(places);
-        setSummary(region, meta, places.length);
-        setState(null);
+          // 검색이 성공했다 = 거점이 확정됐다. region 입력이 칩으로 바뀐다.
+          setAnchorChip(region);
+          // 0건이어도 칩은 남긴다 — "반경을 넓히거나"가 바로 실행 가능한 조언이 된다.
+          syncResultControls(true);
+          updateMap();
+          syncMapToggle();
+
+          if (list.length === 0) {
+            renderPlaces([]);
+            setCount('');
+            setState('state-empty');
+            return;
+          }
+
+          renderPlaces(list);
+          setSummary(region, lastMeta, list.length);
+          setState(null);
+        });
       })
       .catch((error) => {
         if (token !== requestToken) return;

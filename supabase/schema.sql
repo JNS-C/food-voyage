@@ -268,3 +268,44 @@ grant execute on function public.get_top_places(integer) to anon, authenticated;
 --     → t, {search_path=}
 --   select has_function_privilege('anon', 'public.get_top_places(integer)', 'execute');
 --     → true
+
+
+-- ════════════════════════════════════════════════════════
+-- 담김 수 조회 RPC (8/24 — 인기순 정렬)
+-- ════════════════════════════════════════════════════════
+--
+-- 이 블록만 새 쿼리에 붙여넣어 한 번 돌린다. create or replace라 재실행해도 안전하다.
+--
+-- 검색 결과(최대 15곳)의 place_id 배열을 받아 각 가게가 몇 번 담겼는지 돌려준다.
+-- 검색 페이지가 이 수로 행 배지를 그리고 인기순 재정렬을 한다.
+-- get_top_places와 같은 원칙이다: RLS는 그대로 두고 security definer가 집계만
+-- 소유자 권한으로 하며, 반환에 user_id는 시그니처에조차 없다.
+
+create or replace function public.get_save_counts(place_ids text[])
+returns table (place_id text, save_count bigint)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select sp.place_id, count(*)::bigint as save_count
+  from public.saved_places sp
+  -- 배열 상한 가드. 카카오 검색 상한이 15이니 50이면 충분하고,
+  -- 임의로 긴 배열을 보내 집계를 두드리는 남용을 막는다.
+  where sp.place_id = any(place_ids[1:50])
+  group by sp.place_id;
+$$;
+
+-- 함수는 만들어지는 순간 public에 execute가 기본으로 열린다. 전부 걷고 다시 준다.
+-- 배지는 비로그인 검색 화면에도 보여야 하므로 anon에게도 연다 — 익명 집계다.
+revoke all on function public.get_save_counts(text[]) from public;
+grant execute on function public.get_save_counts(text[]) to anon, authenticated;
+
+
+-- ── 실행 직후 확인 ──────────────────────────────────────
+--   select * from public.get_save_counts(array['seed-p01','seed-p05','no-such']);
+--     → seed-p01 10 · seed-p05 6 두 행. 없는 id는 행이 없다(0이 아니라 부재).
+--   select prosecdef, proconfig from pg_proc where proname = 'get_save_counts';
+--     → t, {search_path=}
+--   select has_function_privilege('anon', 'public.get_save_counts(text[])', 'execute');
+--     → true
