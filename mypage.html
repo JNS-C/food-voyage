@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>담은 곳 — food-voyage</title>
+<meta name="description" content="담아 둔 가게를 모아 봅니다.">
+<meta name="robots" content="noindex">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@600&display=swap">
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="tw-config.js"></script>
+<link rel="stylesheet" href="styles.css">
+</head>
+
+<!--
+  ⚠️ 계약(ID)만 고정이고 클래스·감싸는 마크업은 자유롭게 재디자인한다.
+
+  고정 ID   : state-nokey · state-loading · state-error · state-empty
+              result-grid · toast
+  헤더 슬롯 : auth-link · auth-name · auth-signout  (js/auth.js가 네 페이지에서 쓴다)
+              이 페이지 자신은 auth-mypage를 마크업에 두지 않는다 — 자기 링크를
+              생략하는 관례다. search.html이 '맛집 찾기'를 자기 페이지에서 빼는 것과 같다.
+  템플릿    : #tpl-saved-card 의 [data-field] · [data-remove] 속성명
+
+  상태는 hidden 속성으로만 여닫는다. display 유틸리티를 붙이지 않는다
+  (styles.css의 [hidden]{display:none!important}가 그 계약을 지킨다).
+-->
+<body class="bg-cream font-sans text-body text-ink antialiased">
+
+<!-- ── 상단 유리 바 ──────────────────────────────────────
+     body 직속을 유지한다. 조상에 transform이 걸리면 iOS Safari에서
+     backdrop-filter가 통째로 죽는다 (LIQUID-GLASS §11.7-1). -->
+<header class="lg lg-bar fixed inset-x-0 top-0 z-40">
+  <div class="lg-bar-inner mx-auto flex max-w-content items-center justify-between gap-4 px-6 sm:px-8 lg:px-10">
+    <a href="index.html"
+       class="lg-link inline-flex h-11 items-center font-wordmark text-card-title font-semibold lowercase">food-voyage</a>
+
+    <!-- 같은 배경을 공유하는 그룹 안에서 텍스트와 아이콘을 섞지 않는다 (§8.2).
+         세션 복원 전에는 셋 다 hidden이다 — js/auth.js가 hidden과 textContent만 건드린다. -->
+    <nav aria-label="주요" class="flex items-center gap-1">
+      <a href="search.html"
+         class="lg-link inline-flex h-11 items-center px-4 text-nav">맛집 찾기</a>
+      <a id="auth-link" href="login.html"
+         class="lg-link inline-flex h-11 items-center px-4 text-nav" hidden>로그인</a>
+      <span id="auth-name"
+            class="hidden xs:inline-flex h-11 items-center px-2 text-nav" hidden></span>
+      <button id="auth-signout" type="button"
+              class="lg-link inline-flex h-11 items-center px-4 text-nav" hidden>로그아웃</button>
+    </nav>
+  </div>
+</header>
+
+<div class="lg-scroll-edge" aria-hidden="true"></div>
+
+
+<main class="below-bar mx-auto max-w-content px-6 pb-24 sm:px-8 lg:px-10">
+
+  <h1 class="text-hero-2 font-semibold sm:text-section">담은 곳</h1>
+  <p class="mt-4 text-caption text-ink-48">담아 둔 가게를 모아 봤어요.</p>
+
+  <!-- search.html·login.html의 #state-nokey와 같은 컴포넌트다. -->
+  <div id="state-nokey" class="mt-6 rounded-card border border-hairline bg-white px-6 py-14 text-center" hidden>
+    <p class="text-card-title font-semibold">Supabase 설정이 필요합니다</p>
+    <p class="mt-3 text-body text-ink-72">
+      <code class="rounded bg-divider-soft px-1.5 py-0.5 text-caption">config.js</code>의
+      <code class="rounded bg-divider-soft px-1.5 py-0.5 text-caption">SUPABASE_URL</code> ·
+      <code class="rounded bg-divider-soft px-1.5 py-0.5 text-caption">SUPABASE_ANON_KEY</code>가
+      비어 있습니다.
+    </p>
+  </div>
+
+  <div id="state-loading" class="mt-6 rounded-card border border-hairline bg-white px-6 py-14 text-center" hidden>
+    <p class="text-card-title font-semibold">불러오는 중…</p>
+  </div>
+
+  <div id="state-error" class="mt-6 rounded-card border border-hairline bg-white px-6 py-14 text-center" hidden>
+    <p class="text-card-title font-semibold">목록을 불러오지 못했습니다</p>
+    <p class="mt-3 text-body text-ink-72">잠시 뒤 다시 시도해 주세요.</p>
+  </div>
+
+  <!-- search.html #state-empty와 같은 두 줄 구조다. -->
+  <div id="state-empty" class="mt-6 rounded-card border border-hairline bg-white px-6 py-14 text-center" hidden>
+    <p class="text-card-title font-semibold">아직 담은 맛집이 없어요</p>
+    <p class="mt-3 text-body text-ink-72">검색하러 가볼까요?</p>
+    <!-- 이 화면에서 채움을 갖는 유일한 버튼이다. 카드마다 있는 삭제 버튼은 채움이 아니다. -->
+    <a href="search.html"
+       class="press mt-6 inline-flex h-11 items-center rounded-full bg-accent px-[26px] text-btn text-white transition duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-focus">
+      맛집 찾으러 가기
+    </a>
+  </div>
+
+  <!-- 3열 → 2열(≤1023px) → 1열(≤639px). search.html #result-grid와 같은 반응형 규칙이다. -->
+  <div id="result-grid" aria-busy="false"
+       class="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3"></div>
+
+</main>
+
+
+<!-- ── 담은 곳 카드 템플릿 ────────────────────────────
+     logic: cloneNode 후 [data-field]에 textContent로만 값을 넣는다.
+     design: data-field 속성명은 유지하고 클래스·구조는 자유. -->
+<template id="tpl-saved-card">
+  <!-- 플레인 article이다. role="button"·tabindex를 안 둔다 — search.html 카드가
+       그걸 쓰는 건 카드 전체가 (아직 없는) 상세 페이지로 가는 클릭 대상이기
+       때문이고, 그 파일 자체가 "중첩 인터랙티브라 이상적이지 않다"고 적어 뒀다.
+       이 카드는 전체 클릭 동작이 없다 — 삭제 버튼과 구글맵 링크, 둘 다 진짜
+       인터랙티브 요소라 그 문제 자체가 생기지 않는다. -->
+  <article data-card class="rounded-card border border-hairline bg-white p-5">
+    <div class="flex items-start justify-between gap-3">
+      <h3 data-field="name" class="text-card-title font-semibold"></h3>
+      <!-- 채움을 쓰지 않는다 — 이 화면의 채움은 빈 상태의 '맛집 찾으러 가기' 하나뿐이다.
+           카드가 여러 장이면 삭제 버튼도 여러 개라, 전부 채우면 "화면당 하나"
+           규칙과 부딪힌다. 그래서 조용한 아이콘형 버튼으로 둔다. -->
+      <button type="button" data-remove aria-label="담기 취소"
+              class="press inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-ink-48 transition duration-200 hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-focus">
+        <span aria-hidden="true" class="text-card-title leading-none">×</span>
+      </button>
+    </div>
+    <p data-field="address" class="mt-2 text-caption text-ink-72"></p>
+    <p class="mt-3 text-caption text-ink-48">
+      <span data-field="category"></span><span data-field="dot"> · </span><span data-field="date"></span>
+    </p>
+    <!-- 좌표가 없는 행(카카오 좌표 파싱 실패)이면 logic이 hidden을 켠다. -->
+    <a data-field="maps" href="#" target="_blank" rel="noopener"
+       class="mt-4 inline-flex h-11 items-center text-caption text-accent underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-focus">
+      구글맵 보기
+    </a>
+  </article>
+</template>
+
+
+<!-- 네 페이지가 같은 계약을 쓴다 — textContent + data-visible.
+     transform은 styles.css가 X·Y를 통째로 소유한다. 하단에 툴바가 없는 페이지라
+     .toast-above-toolbar가 아니라 bottom-8을 쓴다 (login.html과 같은 선택). -->
+<div id="toast" role="status" aria-live="polite" data-visible="false"
+     class="pointer-events-none fixed bottom-8 left-1/2 z-50 max-w-[calc(100vw_-_32px)] rounded-md bg-deep px-5 py-[14px] text-caption text-on-dark"></div>
+
+
+<!-- config.js는 커밋 대상이라 정상적으로는 늘 있다. onerror는 배포에서 이 파일만
+     빠지는 사고를 대비한 그물이다. -->
+<script src="config.js" onerror="window.__configMissing = true"></script>
+<!-- UMD 빌드다. 이 저장소에는 type="module"이 하나도 없고, 모듈 스크립트는 defer
+     의미론이라 순서 의존 로딩과 섞이면 window.FvAuth가 없는 순간이 생긴다.
+     버전은 고정한다 (PRD §8 지킬 것 5). 전역 이름은 window.supabase다. -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/dist/umd/supabase.js"
+        onerror="window.__supabaseSdkMissing = true"></script>
+<script src="js/auth.js"></script>
+<script src="js/mypage.js"></script>
+</body>
+</html>

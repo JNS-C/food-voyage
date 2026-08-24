@@ -338,7 +338,10 @@
     const link = document.getElementById('auth-link');
     const name = document.getElementById('auth-name');
     const out = document.getElementById('auth-signout');
-    if (!link && !name && !out) return;
+    // 담은 곳(mypage.html) 링크. 로그인했을 때만 보인다. mypage.html 자신은
+    // 이 노드를 마크업에 아예 안 두므로 거기서는 조용히 null로 빠진다.
+    const mypage = document.getElementById('auth-mypage');
+    if (!link && !name && !out && !mypage) return;
 
     const signedIn = Boolean(snap.session);
     const nickname = (snap.profile && snap.profile.nickname) || '';
@@ -349,6 +352,7 @@
       name.hidden = !(signedIn && nickname);
     }
     if (out) out.hidden = !signedIn;
+    if (mypage) mypage.hidden = !signedIn;
   }
 
   /**

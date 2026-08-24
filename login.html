@@ -22,7 +22,7 @@
   고정 ID   : auth-card · auth-form · auth-title · auth-email · auth-password
               auth-nickname · auth-submit · auth-error · auth-current
               auth-switch · auth-switch-hint · toast
-  헤더 슬롯 : auth-link · auth-name · auth-signout  (js/auth.js가 세 페이지에서 쓴다)
+  헤더 슬롯 : auth-link · auth-name · auth-mypage · auth-signout  (js/auth.js가 네 페이지에서 쓴다)
   상태 블록 : state-nokey · state-sent (auth-sent-email · auth-resend)
   콤보박스  : region-input · region-panel · region-listbox · region-status
               #tpl-region-option 의 [data-field] 속성명
@@ -53,6 +53,8 @@
          class="lg-link inline-flex h-11 items-center px-4 text-nav" hidden>로그인</a>
       <span id="auth-name"
             class="hidden xs:inline-flex h-11 items-center px-2 text-nav" hidden></span>
+      <a id="auth-mypage" href="mypage.html"
+         class="lg-link inline-flex h-11 items-center px-4 text-nav" hidden>담은 곳</a>
       <button id="auth-signout" type="button"
               class="lg-link inline-flex h-11 items-center px-4 text-nav" hidden>로그아웃</button>
     </nav>
