@@ -210,3 +210,61 @@ revoke truncate on public.profiles, public.saved_places from anon, authenticated
 --          has_table_privilege('authenticated', 'public.profiles', 'TRUNCATE');
 --
 -- 네 값 모두 false여야 한다.
+
+
+-- ════════════════════════════════════════════════════════
+-- 인기 랭킹 RPC (8/24)
+-- ════════════════════════════════════════════════════════
+--
+-- 이 블록만 새 쿼리에 붙여넣어 한 번 돌린다. create or replace라 재실행해도 안전하다.
+--
+-- saved_places는 RLS로 본인 행만 열린다. "몇 명이 담았나"는 전체 집계가 필요하지만
+-- RLS를 완화하지 않는다 — security definer 함수가 소유자 권한으로 집계하고,
+-- 밖으로 내보내는 것은 (가게 스냅샷 대표값, 담긴 횟수)뿐이다.
+-- user_id는 반환 시그니처에조차 없다.
+
+create or replace function public.get_top_places(limit_count integer default 5)
+returns table (
+  place_id     text,
+  place_name   text,
+  category     text,
+  neighborhood text,
+  save_count   bigint
+)
+language sql
+stable                -- 읽기 전용이다. 데이터를 바꾸지 않는다.
+security definer      -- 소유자로 실행 → saved_places의 RLS를 지나간다. 정책은 그대로다.
+set search_path = ''  -- definer 하드닝(위 "트리거를 두지 않는 이유" ③의 그 규율).
+as $$
+  select
+    sp.place_id,
+    -- 같은 place_id라도 담은 시점의 카카오 스냅샷이라 사용자별로 값이 다를 수 있다.
+    -- 최빈값(mode)으로 대표값 하나를 고른다. null은 집계에서 무시된다.
+    mode() within group (order by sp.place_name)   as place_name,
+    mode() within group (order by sp.category)     as category,
+    mode() within group (order by sp.neighborhood) as neighborhood,
+    count(*)                                       as save_count
+  from public.saved_places sp
+  group by sp.place_id
+  -- 동률 처리: 담긴 횟수 → 더 최근에 담긴 가게 → place_id.
+  -- 마지막 place_id는 새로고침마다 순서가 흔들리지 않게 하는 고정 축이다.
+  order by count(*) desc, max(sp.created_at) desc, sp.place_id
+  -- 호출자가 이상한 값을 넣어도 1~20으로 잘라낸다.
+  limit least(greatest(coalesce(limit_count, 5), 1), 20);
+$$;
+
+-- 함수는 만들어지는 순간 public에 execute가 기본으로 열린다. 전부 걷고 다시 준다.
+-- 랭킹은 랜딩 첫 화면 콘텐츠라 비로그인(anon)에게도 연다 — 개인 식별이 없는
+-- 익명 집계이므로 열어도 되고, 열어야 랜딩이 로그인 없이 완성된다.
+revoke all on function public.get_top_places(integer) from public;
+grant execute on function public.get_top_places(integer) to anon, authenticated;
+
+
+-- ── 실행 직후 확인 ──────────────────────────────────────
+--   select * from public.get_top_places(5);
+--     → 컬럼이 place_id·place_name·category·neighborhood·save_count 다섯뿐이어야 한다.
+--       user_id가 보이면 잘못 만든 것이다.
+--   select prosecdef, proconfig from pg_proc where proname = 'get_top_places';
+--     → t, {search_path=}
+--   select has_function_privilege('anon', 'public.get_top_places(integer)', 'execute');
+--     → true

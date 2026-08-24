@@ -151,25 +151,81 @@
 </section>
 
 
-<!-- ② 인기 맛집 — 채운다 -->
+<!-- ② 지금 인기 맛집 TOP5 — 모두의 담기를 센다.
+     mock 6건이 있던 자리다. 실데이터(saved_places 전체 집계)가 처음 화면에
+     오르는 지점이므로 랜딩의 두 번째 타일이 갖는다. 집계는 RLS를 그대로 둔 채
+     security definer RPC(get_top_places)가 한다 — schema.sql의 그 블록. -->
 <section class="bg-cream text-ink">
   <div class="mx-auto max-w-content p-10 xs:p-12 sm:p-16 lg:p-20">
 
-    <h2 class="text-hero-2 font-semibold sm:text-section">이 동네 사람들이<br class="sm:hidden"> 다시 간 곳</h2>
+    <h2 class="text-hero-2 font-semibold sm:text-section">지금 인기 맛집 TOP5</h2>
+    <p class="mt-4 text-caption text-ink-48">모든 항해자가 담아둔 곳을 모아 셌습니다.</p>
 
-    <!-- 낯선 기호는 첫 등장 섹션에서 한 번만 설명한다 -->
-    <p class="mt-4 flex items-center gap-2 text-caption text-ink-48">
-      <svg class="h-4 w-4 text-accent" aria-hidden="true"><use href="#icon-anchor"/></svg>
-      다시 찾은 사람의 비율
-    </p>
+    <p id="top5-empty" class="mt-8 text-body text-ink-72" hidden>아직 담긴 가게가 없습니다.</p>
 
-    <div id="restaurant-grid" class="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3"></div>
+    <!-- 그리드 카드가 아니라 세로 목록 — 1위부터 5위까지가 위에서 아래로 한눈에 읽힌다 -->
+    <ol id="top5-list" class="mt-8 grid max-w-[720px] grid-cols-1 gap-4"></ol>
 
   </div>
 </section>
 
+<template id="tpl-top5-item">
+  <!-- 순위 숫자에 황동을 쓰지 않는다. 누를 수 없는 것에 인터랙션 색을 쓰면
+       신호가 오염된다(renderFeatures의 뱃지와 같은 이유). 담김 수만 집계형
+       재방문율 숫자와 같은 층위(text-ratio·accent)를 갖는다. -->
+  <li data-item class="flex items-center gap-5 rounded-card border border-hairline bg-white p-5">
+    <span data-field="rank" class="w-9 shrink-0 text-section font-semibold text-ink-48" aria-hidden="true"></span>
+    <div class="min-w-0 flex-1">
+      <h3 data-field="name" class="truncate text-card-title font-semibold"></h3>
+      <p class="mt-1 text-caption text-ink-48"><span data-field="category"></span><span aria-hidden="true"> · </span><span data-field="neighborhood"></span></p>
+    </div>
+    <span data-field="count" class="shrink-0 text-ratio font-semibold text-accent"></span>
+  </li>
+</template>
 
-<!-- ③ 최근 항해일지 — 쌓인다 -->
+
+<!-- ③ 나를 위한 추천 — 담은 취향을 읽는다.
+     비로그인에도 섹션 자체는 항상 보인다 — 섹션째 숨기면 크림(②)과 네이비(④)
+     사이의 타일 하나가 통째로 사라져 배경 교차 리듬이 상태에 따라 달라진다.
+     대신 내부 상태를 hidden 토글로만 바꾼다(mypage.html과 같은 계약). -->
+<section class="bg-white text-ink">
+  <div class="mx-auto max-w-content p-10 xs:p-12 sm:p-16 lg:p-20">
+
+    <h2 class="text-hero-2 font-semibold sm:text-section">나를 위한 추천</h2>
+    <p id="foryou-reason" class="mt-4 text-caption text-ink-48">담아둔 가게를 보고 고릅니다.</p>
+
+    <div id="foryou-login" class="mt-8" hidden>
+      <p class="text-body text-ink-72">로그인하면 담아둔 가게의 취향을 읽어 골라 드려요.</p>
+      <p class="mt-3"><a href="login.html"
+           class="inline-flex h-11 items-center text-accent underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-focus">로그인하기</a></p>
+    </div>
+
+    <p id="foryou-empty" class="mt-8 text-body text-ink-72" hidden>아직 추천할 거리가 없습니다.
+      <a href="search.html"
+         class="text-accent underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-focus">맛집 찾기</a>에서
+      가게를 담으면 여기가 채워집니다.</p>
+
+    <p id="foryou-error" class="mt-8 text-body text-ink-72" hidden>추천을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</p>
+
+    <div id="foryou-grid" class="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3"></div>
+
+  </div>
+</section>
+
+<template id="tpl-foryou-card">
+  <!-- 화이트 타일 위에는 크림 카드(renderFeatures의 그 이유 — 흰 위에 흰 카드는
+       형태가 사라진다). 카드 전체가 아니라 링크 하나만 누를 수 있으므로 <article>. -->
+  <article class="rounded-card bg-cream p-6">
+    <h3 data-field="name" class="text-card-title font-semibold"></h3>
+    <p data-field="address" class="mt-2 text-caption text-ink-48"></p>
+    <p class="mt-3"><span data-field="neighborhood" class="inline-block rounded-full bg-divider-soft px-[11px] py-[5px] text-caption text-ink-72"></span></p>
+    <p class="mt-2"><a data-field="link" href="#" target="_blank" rel="noopener"
+         class="inline-flex h-11 items-center text-caption text-accent underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-focus">카카오맵에서 보기</a></p>
+  </article>
+</template>
+
+
+<!-- ④ 최근 항해일지 — 쌓인다 -->
 <section class="bg-deep text-on-dark">
   <div class="mx-auto max-w-content p-10 xs:p-12 sm:p-16 lg:p-20">
 
@@ -203,7 +259,7 @@
 </section>
 
 
-<!-- ④ 서비스 특징 — 더 온다 -->
+<!-- ⑤ 서비스 특징 — 더 온다 -->
 <section class="bg-white text-ink">
   <div class="mx-auto max-w-content p-10 xs:p-12 sm:p-16 lg:p-20">
 
@@ -216,7 +272,7 @@
 </section>
 
 
-<!-- ⑤ 푸터 -->
+<!-- ⑥ 푸터 -->
 <footer class="bg-cream-deep text-ink-72">
   <div class="mx-auto max-w-content px-10 py-16 xs:px-12 sm:px-16 lg:px-20">
 
@@ -258,6 +314,9 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/dist/umd/supabase.js"
         onerror="window.__supabaseSdkMissing = true"></script>
 <script src="js/auth.js"></script>
+<!-- 맞춤 추천이 카카오 검색을 쓴다. IIFE + window.KakaoPlaces 하나만 내보내므로
+     script.js의 top-level 이름과 충돌하지 않는다 (search.html과 같은 파일). -->
+<script src="js/kakao-places.js"></script>
 <script src="mock-data.js"></script>
 <script src="script.js"></script>
 </body>

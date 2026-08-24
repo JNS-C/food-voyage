@@ -7,19 +7,16 @@
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
-/** card-place-mock 색면 3단계. 순환시킨다. */
-const TONE_CLASSES = ['bg-cream', 'bg-cream-deep', 'bg-cream-deeper'];
-
 /**
  * 검색은 더 이상 여기 없다. 히어로 폼(#hero-search-form)이 네이티브 GET으로
  * search.html로 이동하므로 가로챌 이유가 사라졌다.
  *
  * 로그인도 8/24에 빠졌다. #start-btn은 <a href="login.html">이 되었고,
  * 로그인 상태에 따른 문구와 토스트는 js/auth.js가 갖는다.
+ *
+ * mock 인기 맛집도 8/24에 빠졌다. 그 자리는 실데이터 TOP5(renderTop5)가 갖고,
+ * showToast만 남았다 — js/auth.js가 window.showToast로 부른다.
  */
-const TOAST_MESSAGES = {
-  detail: '리뷰 상세는 8월 18일에 열립니다',
-};
 
 /* ── 유틸 ───────────────────────────────────────────── */
 
@@ -50,23 +47,6 @@ function anchorGlyph(colorClass) {
 /* ── anchor-rating ──────────────────────────────────── */
 
 /**
- * 집계형 — 닻 5개 + 비율 숫자. 인기 맛집 카드에서만 쓴다.
- * 여러 사람의 yes 비율이므로 5단계로 반올림할 모집단이 있다.
- */
-function renderAnchorRating(yes, total) {
-  const wrap = el('div', 'mt-4 flex flex-wrap items-center gap-x-3 gap-y-2');
-
-  const glyphs = el('div', 'flex gap-1'); // 자간 4px
-  const filled = Math.round((yes / total) * 5);
-  for (let i = 0; i < 5; i += 1) {
-    glyphs.appendChild(anchorGlyph(i < filled ? 'text-accent' : 'text-glyph-empty'));
-  }
-
-  wrap.append(glyphs, el('span', 'text-ratio font-semibold text-accent', `또 갈래요 ${yes}/${total}`));
-  return wrap;
-}
-
-/**
  * 단일형 — 닻 1개 + 라벨. 항해일지 인용 카드에서만 쓴다.
  * once·maybe에는 아무것도 표시하지 않는다. 빈 닻을 두면 "평가가 나쁘다"로
  * 읽혀 3상태의 뉘앙스가 무너진다.
@@ -80,41 +60,175 @@ function renderAnchorSingle(willRevisit) {
 
 /* ── 렌더 ───────────────────────────────────────────── */
 
-function renderRestaurants() {
-  const grid = document.getElementById('restaurant-grid');
+/**
+ * 지금 인기 맛집 TOP5.
+ *
+ * 전체 사용자의 saved_places 집계는 RLS(본인 행만) 때문에 select로는 못 얻는다.
+ * schema.sql의 get_top_places(security definer RPC)가 대신 세어 주고,
+ * 응답에는 (가게 스냅샷, 담긴 횟수)만 있다 — user_id는 애초에 안 온다.
+ * anon에도 execute가 열려 있어 비로그인 랜딩에서도 채워진다.
+ */
+async function renderTop5() {
+  const list = document.getElementById('top5-list');
+  const empty = document.getElementById('top5-empty');
+  if (!list || !empty) return;
+
+  // Supabase 설정이 비어 있어도 랜딩은 죽지 않는다. 빈 상태 문구로만 내려간다.
+  if (!window.FvAuth || !window.FvAuth.isConfigured()) {
+    empty.hidden = false;
+    return;
+  }
+
+  const { data, error } = await window.FvAuth._client.rpc('get_top_places', { limit_count: 5 });
+  if (error) {
+    console.warn('[top5]', error.message);
+    empty.hidden = false;
+    return;
+  }
+
+  const rows = data || [];
+  const tpl = document.getElementById('tpl-top5-item');
+  list.textContent = '';
+  rows.forEach((row, i) => {
+    const item = tpl.content.cloneNode(true);
+    item.querySelector('[data-item]')
+      .setAttribute('aria-label', `${i + 1}위 ${row.place_name}, ${row.save_count}명이 담았어요`);
+    item.querySelector('[data-field="rank"]').textContent = String(i + 1);
+    item.querySelector('[data-field="name"]').textContent = row.place_name;
+    item.querySelector('[data-field="category"]').textContent = row.category || '';
+    item.querySelector('[data-field="neighborhood"]').textContent = row.neighborhood || '';
+    item.querySelector('[data-field="count"]').textContent = `${row.save_count}명이 담았어요`;
+    list.appendChild(item);
+  });
+  empty.hidden = rows.length > 0;
+}
+
+/* ── 나를 위한 추천 ─────────────────────────────────── */
+
+const FORYOU_MAX = 6;
+
+/** 로그인↔로그아웃이 빠르게 오갈 때 늦게 도착한 응답을 버린다 (search.js의 seq와 같은 태도). */
+let forYouSeq = 0;
+
+/** 'login' | 'empty' | 'error' | null(=결과 표시). hidden 속성만 토글한다. */
+function setForYouState(name) {
+  ['foryou-login', 'foryou-empty', 'foryou-error'].forEach((id) => {
+    const node = document.getElementById(id);
+    if (node) node.hidden = id !== `foryou-${name}`;
+  });
+}
+
+/** rows에서 key 값의 최빈값을 고른다. 값이 하나도 없으면 value가 빈 문자열이다. */
+function topFrequency(rows, key) {
+  const counts = new Map();
+  rows.forEach((row) => {
+    const value = String(row[key] || '').trim();
+    if (value) counts.set(value, (counts.get(value) || 0) + 1);
+  });
+  let best = '';
+  let n = 0;
+  counts.forEach((count, value) => {
+    if (count > n) {
+      best = value;
+      n = count;
+    }
+  });
+  return { value: best, count: n };
+}
+
+/**
+ * 내 saves → 최다 카테고리 → 그 카테고리로 카카오 검색 → 이미 담은 가게 제외.
+ *
+ * 검색 지역은 생활권(profiles.home_area)을 먼저 쓰고, 없으면 내가 담은 가게들의
+ * 최빈 동네로 대신한다. 카테고리는 코드가 아니라 키워드로 검색어에 합친다
+ * (search.js buildQuery와 같은 이유 — 한식·일식 등에는 카카오 그룹 코드가 없다).
+ */
+async function loadForYou(snap) {
+  const seq = ++forYouSeq;
+  const grid = document.getElementById('foryou-grid');
+  const reason = document.getElementById('foryou-reason');
   if (!grid) return;
+  grid.textContent = '';
 
-  mockRestaurants.forEach((place) => {
-    const card = el(
-      'button',
-      'press rounded-card border border-hairline bg-white p-5 text-left transition duration-200 ' +
-        'hover:-translate-y-0.5 hover:border-glyph-empty ' +
-        'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-focus'
-    );
-    card.type = 'button';
-    card.setAttribute(
-      'aria-label',
-      `${place.name}, ${place.neighborhood}, 10명 중 ${Math.round((place.revisitYes / place.revisitTotal) * 10)}명이 또 갔어요`
-    );
+  // 내 saves만 필요하다. user_id 필터는 안 건다 — RLS가 거른다 (mypage.js와 같은 태도).
+  const { data: saves, error } = await window.FvAuth._client
+    .from('saved_places')
+    .select('place_id, category, neighborhood');
+  if (seq !== forYouSeq) return;
+  if (error) {
+    console.warn('[foryou]', error.message);
+    setForYouState('error');
+    return;
+  }
+  if (!saves || saves.length === 0) {
+    setForYouState('empty');
+    return;
+  }
 
-    // ① 4:3 색면 — 8/18에 이 자리를 <img>로 교체한다.
-    //    색면은 놓인 물체가 아니라 빈 자리 표시이므로 그림자를 주지 않는다.
-    const thumb = el('div', `flex aspect-[4/3] items-center justify-center rounded-photo ${TONE_CLASSES[place.tone]}`);
-    const initial = el('span', 'text-section font-semibold text-ink-48', place.initial);
-    initial.setAttribute('aria-hidden', 'true');
-    thumb.appendChild(initial);
+  const topCat = topFrequency(saves, 'category');
+  const region = (snap.profile && snap.profile.home_area) || topFrequency(saves, 'neighborhood').value;
+  if (!topCat.value || !region) {
+    setForYouState('empty');
+    return;
+  }
+  if (!window.KakaoPlaces || !window.KakaoPlaces.hasKey()) {
+    setForYouState('error');
+    return;
+  }
 
-    // ② 가게명 → ③ 동네 칩 → ④ 재방문율. 여기서 더 얹지 않는다.
-    const name = el('h3', 'mt-4 text-card-title font-semibold', place.name);
-    const chip = el(
-      'span',
-      'mt-3 inline-block rounded-full bg-divider-soft px-[11px] py-[5px] text-caption text-ink-72',
-      place.neighborhood
-    );
+  try {
+    const places = await window.KakaoPlaces.searchPlaces({ region, keyword: topCat.value });
+    if (seq !== forYouSeq) return;
 
-    card.append(thumb, name, chip, renderAnchorRating(place.revisitYes, place.revisitTotal));
-    card.addEventListener('click', () => showToast(TOAST_MESSAGES.detail));
-    grid.appendChild(card);
+    // 이미 담은 가게는 뺀다. 더미의 place_id는 seed- 접두사라 카카오 id(숫자
+    // 문자열)와 겹칠 수 없다 — 제외 로직이 더미 때문에 오작동하지 않는다.
+    const mine = new Set(saves.map((row) => String(row.place_id)));
+    const fresh = places.filter((place) => !mine.has(String(place.id))).slice(0, FORYOU_MAX);
+    if (fresh.length === 0) {
+      setForYouState('empty');
+      return;
+    }
+
+    setForYouState(null);
+    if (reason) {
+      reason.textContent = `${topCat.value}을(를) ${topCat.count}곳 담으셨네요 — ${region}의 다른 ${topCat.value}입니다.`;
+    }
+
+    const tpl = document.getElementById('tpl-foryou-card');
+    fresh.forEach((place) => {
+      const card = tpl.content.cloneNode(true);
+      card.querySelector('[data-field="name"]').textContent = place.name;
+      card.querySelector('[data-field="address"]').textContent = place.address || '';
+      card.querySelector('[data-field="neighborhood"]').textContent = place.neighborhood || '';
+      const link = card.querySelector('[data-field="link"]');
+      if (place.url) link.href = place.url;
+      else link.hidden = true;
+      grid.appendChild(card);
+    });
+  } catch (err) {
+    if (seq !== forYouSeq) return;
+    // NO_KEY·REGION_NOT_FOUND·SEARCH_ERROR 전부 사용자에게는 한 문구다.
+    console.warn('[foryou]', err);
+    setForYouState('error');
+  }
+}
+
+function initForYou() {
+  if (!window.FvAuth || !window.FvAuth.isConfigured()) {
+    setForYouState('login');
+    return;
+  }
+  window.FvAuth.onChange((snap) => {
+    if (snap.session) {
+      loadForYou(snap);
+    } else {
+      forYouSeq += 1; // 날아가고 있는 요청이 있다면 무효화한다
+      const grid = document.getElementById('foryou-grid');
+      if (grid) grid.textContent = '';
+      const reason = document.getElementById('foryou-reason');
+      if (reason) reason.textContent = '담아둔 가게를 보고 고릅니다.';
+      setForYouState('login');
+    }
   });
 }
 
@@ -310,7 +424,8 @@ function initScrollReveal() {
  * 바인딩 없이도 동작하게 되었고, 로그인 상태에 따른 처리는 js/auth.js가 맡는다.
  */
 
-renderRestaurants();
+renderTop5();
+initForYou();
 renderLogs();
 renderFeatures();
 initLogControls();
