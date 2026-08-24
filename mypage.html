@@ -57,10 +57,19 @@
 <div class="lg-scroll-edge" aria-hidden="true"></div>
 
 
-<main class="below-bar mx-auto max-w-content px-6 pb-24 sm:px-8 lg:px-10">
+<!-- ── 타이틀 타일 ──────────────────────────────────────
+     랜딩 히어로·로그인·검색과 같은 문법의 딥 네이비 타일. 유리 바(반투명
+     네이비)는 뒤에 있는 것에 반응하므로, 뒤가 크림뿐이면 회색 띠로 뜬다(§11.8).
+     타이틀을 네이비 타일로 올려 바가 랜딩과 같은 색감으로 시작하게 한다.
+     새 색 없이 bg-deep · on-dark 램프 그대로다. -->
+<section class="bg-deep text-on-dark">
+  <div class="below-bar mx-auto w-full max-w-content px-6 pb-8 sm:px-8 lg:px-10">
+    <h1 class="text-hero-2 font-semibold sm:text-section">담은 곳</h1>
+    <p class="mt-4 text-caption text-on-dark-muted">담아 둔 가게를 모아 봤어요.</p>
+  </div>
+</section>
 
-  <h1 class="text-hero-2 font-semibold sm:text-section">담은 곳</h1>
-  <p class="mt-4 text-caption text-ink-48">담아 둔 가게를 모아 봤어요.</p>
+<main class="mx-auto max-w-content px-6 pb-24 pt-2 sm:px-8 lg:px-10">
 
   <!-- search.html·login.html의 #state-nokey와 같은 컴포넌트다. -->
   <div id="state-nokey" class="mt-6 rounded-card border border-hairline bg-white px-6 py-14 text-center" hidden>

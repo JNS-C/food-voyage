@@ -387,6 +387,11 @@
   z-index: 30;
   inset-inline: 12px;
   bottom: calc(12px + env(safe-area-inset-bottom, 0px));  /* 홈 인디케이터 회피(§11.6) */
+  /* 상단 바와 달리 이 유리는 네이비 타일 위에 얹힐 기회가 없다 — 언제나
+     크림·화이트 콘텐츠 위다. 기본 fill(0.76)이면 늘 회색으로 씻겨 떠서
+     랜딩의 네이비 면과 다른 색으로 읽힌다. 강한 fill로 네이비 면을 지킨다.
+     새 값이 아니라 기존 토큰(--lg-fill-strong)의 재사용이다. */
+  --lg-fill: var(--lg-fill-strong);
 }
 
 @media (min-width: 640px) {
