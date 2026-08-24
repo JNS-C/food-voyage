@@ -75,3 +75,26 @@ create policy "profiles_update_own"
 -- error 는 null 이고 data 가 빈 배열로 온다. RLS 의 UPDATE 거부는 에러가 아니라
 -- **0행**이다 — "에러가 안 났으니 통과했다"고 읽으면 안 된다.
 -- Table Editor 에서 A 의 nickname 이 그대로인지 눈으로 확인한다.
+
+
+-- ── 실행 직후 확인 ──────────────────────────────────────
+-- 아래를 따로 한 번 돌려서 정책 3개가 붙었는지 본다.
+--
+--   select policyname, cmd from pg_policies
+--   where schemaname = 'public' and tablename = 'profiles';
+--
+-- profiles_select_public(SELECT) · profiles_insert_own(INSERT) ·
+-- profiles_update_own(UPDATE) 세 줄이 나와야 한다. 한 줄이라도 없으면
+-- 가입은 되는데 프로필이 안 만들어지거나, 남의 행이 열린다.
+
+
+-- ── 처음부터 다시 만들려면 ──────────────────────────────
+-- 위를 두 번 실행하면 relation "profiles" already exists 로 멈춘다.
+-- 갈아엎을 때만 아래를 먼저 돌린다.
+--
+--   drop table if exists public.profiles cascade;
+--
+-- **가입한 계정의 프로필이 전부 사라진다.** 정책은 테이블에 딸려 있으므로
+-- 같이 지워진다. auth.users 는 남으므로 계정 자체를 지우려면
+-- Authentication > Users 에서 직접 지운다 — 그래야 같은 이메일로 다시
+-- 가입할 수 있다.
