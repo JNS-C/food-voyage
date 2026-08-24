@@ -20,7 +20,7 @@ npx --yes http-server -p 8000   # 없으면
 `config.js`의 `SUPABASE_URL`·`SUPABASE_ANON_KEY`가 비어 있으면 로그인 페이지가 폼 대신 안내 블록을 띄운다. 채우는 순서는 이렇다.
 
 1. **프로젝트 생성** — Region은 `Northeast Asia (Seoul)`.
-2. **SQL Editor에 `supabase/schema.sql`을 붙여넣고 실행.** `profiles` 테이블과 RLS 정책이 생긴다.
+2. **SQL Editor에 `supabase/schema.sql`을 붙여넣고 실행.** `profiles`·`saved_places` 테이블과 RLS 정책이 생긴다. 두 번째 이후로 다시 붙여넣을 때는 이미 있는 테이블의 `create table`이 `relation already exists`로 멈추니, 새로 추가된 블록만 새 쿼리로 돌린다.
 3. **Settings → API**에서 `Project URL`과 `anon`(또는 `publishable`) 키를 복사해 `config.js`에 넣는다.
    `service_role` 키는 절대 넣지 않는다 — RLS를 통째로 우회한다.
 4. **이메일 인증을 쓸지 정한다.** 아래 절을 볼 것.
@@ -115,10 +115,17 @@ js/
   auth.js            window.FvAuth — Supabase 인증, 세 페이지 공유
   kakao-places.js    window.KakaoPlaces
   region-combobox.js window.RegionCombobox
+  saved-places.js    window.FvSaved — 검색 결과 담기, search.html 전용
   search.js          검색 페이지 컨트롤러
   login.js           로그인 페이지 컨트롤러
 supabase/
-  schema.sql    profiles 테이블 + RLS. 대시보드에 붙여넣는다
+  schema.sql    profiles·saved_places 테이블 + RLS. 대시보드에 붙여넣는다
 ```
 
 `js/`의 파일들은 IIFE 안에 갇혀 있고 `window.X` 하나만 내보낸다. `script.js`와 `js/search.js`는 top-level 이름을 쓰므로 **한 페이지에 같이 올리면 안 된다**.
+
+## 담기
+
+검색 결과 카드의 `담기` 버튼이 `saved_places`에 (user_id, place_id) 한 행으로 저장된다. 같은 사람이 같은 가게를 두 번 담을 수 없고(기본키), 본인 것만 읽고 쓴다(RLS). `js/saved-places.js`가 `window.FvAuth`의 로그인 상태를 구독해서 칠하므로, 로그인 안 한 채 누르면 안내 후 `login.html?next=`로 보내고 로그인하면 같은 검색 결과로 돌아온다.
+
+담기·취소는 `upsert`가 아니라 `insert` + 중복키(23505) 처리를 쓴다. `saved_places`에는 `update` 권한을 주지 않았는데(고칠 값이 없어서다) `upsert`는 내부적으로 `ON CONFLICT DO UPDATE`라 그 권한을 요구한다.
