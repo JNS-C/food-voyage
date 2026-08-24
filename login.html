@@ -89,8 +89,11 @@
 
         <div>
           <label for="auth-password" class="block text-caption text-ink-72">비밀번호</label>
-          <input id="auth-password" name="password" type="password" required minlength="6"
-                 autocomplete="current-password" placeholder="6자 이상"
+          <!-- minlength는 Supabase의 최소 길이 설정과 같아야 한다
+               (Authentication > Sign In / Providers > Email). 다르면 화면이 가르치는
+               규칙과 서버가 거절하는 규칙이 어긋난다. 대시보드를 바꾸면 여기도 바꾼다. -->
+          <input id="auth-password" name="password" type="password" required minlength="8"
+                 autocomplete="current-password" placeholder="8자 이상"
                  class="mt-2 h-[52px] w-full rounded-full border border-hairline bg-white px-6 text-body text-ink placeholder:text-ink-48 focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-accent-focus">
         </div>
 

@@ -213,7 +213,17 @@
 
     if (has('Invalid login credentials')) return '이메일 또는 비밀번호가 맞지 않습니다.';
     if (has('already registered') || has('already been registered')) return '이미 가입된 이메일입니다.';
-    if (has('Password should be at least')) return '비밀번호는 6자 이상이어야 합니다.';
+    // 숫자를 박아 두지 않는다. Supabase가 'Password should be at least 8 characters'
+    // 처럼 실제 설정값을 담아 주므로 그걸 읽는다 — 대시보드에서 길이를 바꿔도
+    // 문구가 저절로 따라간다. (login.html의 minlength는 따로 맞춰야 한다.)
+    if (has('Password should be at least')) {
+      const n = (raw.match(/(d+)/) || [])[1];
+      return '비밀번호는 ' + (n || 8) + '자 이상이어야 합니다.';
+    }
+    // 문자 종류 요구(숫자·대소문자·기호)를 켠 경우.
+    if (has('Password should contain')) {
+      return '비밀번호에 영문 대소문자·숫자·기호를 섞어 주세요.';
+    }
     if (has('Unable to validate email') || has('invalid format')) return '이메일 형식을 확인해 주세요.';
     if (has('Email not confirmed')) return '아직 이메일 인증이 끝나지 않았습니다. 메일함의 링크를 눌러 주세요.';
     if (has('For security purposes') || has('rate limit') || has('Too many')) return '잠시 후 다시 시도해 주세요.';
