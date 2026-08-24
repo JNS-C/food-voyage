@@ -23,7 +23,7 @@
               auth-nickname · auth-submit · auth-error · auth-current
               auth-switch · auth-switch-hint · toast
   헤더 슬롯 : auth-link · auth-name · auth-signout  (js/auth.js가 세 페이지에서 쓴다)
-  상태 블록 : state-nokey
+  상태 블록 : state-nokey · state-sent (auth-sent-email · auth-resend)
   콤보박스  : region-input · region-panel · region-listbox · region-status
               #tpl-region-option 의 [data-field] 속성명
 
@@ -129,6 +129,22 @@
         <button id="auth-switch" type="button"
                 class="ml-1 text-caption text-accent underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-focus">회원가입</button>
       </p>
+    </div>
+
+    <!-- Confirm email이 켜져 있으면 가입 직후 세션 없이 이 상태로 온다.
+         에러가 아니라 정상 경로다 — 사용자가 할 일이 남았다는 뜻이다. -->
+    <div id="state-sent" class="mt-6 rounded-card border border-hairline bg-white px-6 py-14 text-center" hidden>
+      <p class="text-card-title font-semibold">메일함을 확인해 주세요</p>
+      <p class="mt-3 text-body text-ink-72">
+        <span id="auth-sent-email" class="font-semibold text-ink"></span>로 인증 링크를 보냈습니다.
+        링크를 누르면 가입이 끝납니다.
+      </p>
+      <p class="mt-3 text-caption text-ink-48">메일이 안 보이면 스팸함도 확인해 주세요.</p>
+      <!-- 보조 동작이라 button-quiet다. 테두리를 넣지 않는다. -->
+      <button id="auth-resend" type="button"
+              class="press mt-6 inline-flex h-11 items-center rounded-full px-[26px] text-btn text-accent transition duration-200 disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-focus">
+        인증 메일 다시 보내기
+      </button>
     </div>
 
     <!-- search.html의 #state-nokey와 같은 컴포넌트다. 원인을 화면에서 읽게 한다. -->

@@ -20,13 +20,29 @@ npx --yes http-server -p 8000   # 없으면
 `config.js`의 `SUPABASE_URL`·`SUPABASE_ANON_KEY`가 비어 있으면 로그인 페이지가 폼 대신 안내 블록을 띄운다. 채우는 순서는 이렇다.
 
 1. **프로젝트 생성** — Region은 `Northeast Asia (Seoul)`.
-2. **Authentication → Sign In / Providers → Email → `Confirm email` 끄기 → Save.**
-   기본 SMTP는 테스트용이고 시간당 2통 제한이다. 켜 두면 계정을 하나 더 만들 때 메일이 안 와서 막힌다. 끄면 `signUp()`이 세션을 즉시 돌려주고, 그 세션이 있어야 `auth.uid()`가 잡혀 RLS insert 정책을 통과한다.
-3. **SQL Editor에 `supabase/schema.sql`을 붙여넣고 실행.** `profiles` 테이블과 RLS 정책이 생긴다.
-4. **Settings → API**에서 `Project URL`과 `anon`(또는 `publishable`) 키를 복사해 `config.js`에 넣는다.
+2. **SQL Editor에 `supabase/schema.sql`을 붙여넣고 실행.** `profiles` 테이블과 RLS 정책이 생긴다.
+3. **Settings → API**에서 `Project URL`과 `anon`(또는 `publishable`) 키를 복사해 `config.js`에 넣는다.
    `service_role` 키는 절대 넣지 않는다 — RLS를 통째로 우회한다.
+4. **이메일 인증을 쓸지 정한다.** 아래 절을 볼 것.
 
-Site URL·redirect allowlist는 지금 건드리지 않아도 된다. 이메일+비밀번호에는 리디렉션이 없다. 구글 OAuth를 붙이는 날 등록한다.
+## 이메일 인증 (Confirm email)
+
+**코드는 켜짐·꺼짐 둘 다 다룬다.** `Authentication → Sign In / Providers → Email`의 토글 하나로 갈리고, 어느 쪽이든 프로필은 만들어진다 — `signUp`이 닉네임·생활권을 `user_metadata`에 실어 보내고, 세션이 처음 생기는 순간 `ensureProfile()`이 그 값으로 행을 만든다.
+
+| | 켰을 때 | 껐을 때 |
+|---|---|---|
+| `signUp()` 반환 | 세션 없음 → "메일함을 확인해 주세요" 안내 | 세션 즉시 → 홈으로 |
+| 필요한 것 | **커스텀 SMTP** | 없음 |
+| 프로필 생성 시점 | 링크를 누르고 돌아온 직후 | 가입 직후 |
+
+**기본 SMTP로는 켜지 마라.** Supabase 문서가 못 박아 뒀다 — 기본 메일러는 best-effort이고 "non-production use cases" 전용, **시간당 2통**이며 커스텀 SMTP 없이는 못 늘린다. 발표 중에 계정을 하나 더 만들면 메일이 안 온다.
+
+커스텀 SMTP를 붙일 거라면 (Resend · Brevo · SendGrid 등) 추가로 등록할 것:
+
+- **Authentication → URL Configuration → Redirect URLs**에 `http://localhost:8000/**`와 배포 URL을 넣는다. 인증 링크는 `login.html?confirmed=1`로 돌아온다 (`js/auth.js`의 `emailRedirectTo`).
+- Site URL도 배포 URL로 맞춘다. 허용목록에 없는 주소로 돌아오면 여기로 떨어진다.
+
+**끈 상태라면 Redirect URLs를 건드리지 않아도 된다.** 이메일+비밀번호 로그인에는 리디렉션이 없다. 구글 OAuth를 붙이는 날에는 필요해진다.
 
 ## 키를 커밋하는 이유
 

@@ -1,11 +1,18 @@
 -- food-voyage — 8/24 인증·프로필 스키마
 --
 -- Supabase 대시보드 > SQL Editor 에 그대로 붙여넣어 한 번 실행한다.
--- 실행 전에 Authentication > Sign In / Providers > Email 에서
--- **Confirm email 을 꺼야 한다.** 기본 SMTP는 테스트용이고 시간당 2통 제한이라,
--- 켜 두면 발표 중에 계정 하나 더 만들 때 메일이 안 와서 막힌다.
--- 끄면 signUp()이 세션을 즉시 돌려주고, 그 세션이 있어야 auth.uid()가 잡혀
--- 아래 profiles_insert_own 정책을 클라이언트가 통과할 수 있다.
+--
+-- Confirm email(Authentication > Sign In / Providers > Email)은 켜도 되고 꺼도 된다.
+-- 클라이언트가 두 경우를 다 다룬다. 갈리는 건 메일이 실제로 배달되느냐뿐이다.
+--
+--   켠다  → signUp() 이 세션 없이 돌아온다. login.js 가 "메일함을 확인해 주세요"
+--           안내로 넘어가고, 사용자가 링크를 누르면 그때 세션이 생긴다.
+--           **커스텀 SMTP 가 사실상 필수다.** Supabase 기본 메일러는 공식 문서상
+--           best-effort · non-production 이고 시간당 2통이다. 발표 중에 계정을
+--           하나 더 만들면 메일이 안 온다.
+--   끈다  → signUp() 이 세션을 즉시 돌려준다. 외부 설정이 0이다.
+--
+-- 어느 쪽이든 프로필은 만들어진다. 아래 "트리거를 두지 않는 이유"를 볼 것.
 
 
 -- ── profiles ────────────────────────────────────────────
@@ -42,8 +49,9 @@ create policy "profiles_update_own"
 --
 -- auth.users 에 handle_new_user() 트리거를 거는 게 흔한 패턴이지만 여기서는 안 쓴다.
 --
---  ① Confirm email 을 껐으므로 signUp() 이 세션을 즉시 돌려준다. auth.uid() 가
---     잡히므로 profiles_insert_own 만으로 클라이언트 insert 가 통과한다.
+--  ① 세션이 생기는 시점이면 auth.uid() 가 잡히므로 profiles_insert_own 만으로
+--     클라이언트 insert 가 통과한다. Confirm email 을 껐으면 signUp() 직후가,
+--     켰으면 인증 링크를 누르고 돌아온 직후가 그 시점이다.
 --  ② 트리거가 실패하면 Supabase 는 'Database error saving new user' 라는
 --     원인을 안 알려주는 문자열 하나만 돌려주고 회원가입 자체를 막는다.
 --  ③ security definer + set search_path = '' 하드닝을 틀리게 쓸 여지가 없어진다.
@@ -51,6 +59,10 @@ create policy "profiles_update_own"
 -- 대신 js/auth.js 의 ensureProfile() 이 "세션은 있는데 profiles 행이 없으면
 -- user_metadata 로 다시 만든다"는 자가복구 경로를 갖는다. 실패해도 로그인은
 -- 살아 있고 원인이 콘솔에 남는다.
+--
+-- 이 경로가 Confirm email 을 켠 경우까지 덮는다. signUp 의 options.data 로 넣은
+-- nickname · home_area 가 raw_user_meta_data 에 남아 인증을 건너서 도착하므로,
+-- 링크를 누르고 처음 들어올 때 그 값으로 행이 만들어진다.
 
 
 -- ── RLS 가 진짜 막는지 확인하는 법 ──────────────────────

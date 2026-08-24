@@ -70,9 +70,11 @@
       auth: {
         persistSession: true,
         autoRefreshToken: true,
-        // 오늘은 OAuth도 매직링크도 없다. URL에 토큰이 실려 올 일이 없다.
-        // 구글을 붙이는 날 true로 바꾼다.
-        detectSessionInUrl: false,
+        // 인증 메일의 링크는 #access_token=... 을 달고 돌아온다. 끄면 그 세션을
+        // 주워 담지 못해 인증을 마쳐도 로그아웃 상태로 보인다.
+        // Confirm email이 꺼져 있어도 켜 두는 게 안전하다 — URL에 토큰이 없으면
+        // 아무 일도 하지 않는다. 나중에 붙일 구글 OAuth도 이 플래그를 쓴다.
+        detectSessionInUrl: true,
         storageKey: STORAGE_KEY,
       },
     });
@@ -213,7 +215,7 @@
     if (has('already registered') || has('already been registered')) return '이미 가입된 이메일입니다.';
     if (has('Password should be at least')) return '비밀번호는 6자 이상이어야 합니다.';
     if (has('Unable to validate email') || has('invalid format')) return '이메일 형식을 확인해 주세요.';
-    if (has('Email not confirmed')) return '이메일 인증이 켜져 있습니다. Supabase 대시보드에서 Confirm email을 꺼 주세요.';
+    if (has('Email not confirmed')) return '아직 이메일 인증이 끝나지 않았습니다. 메일함의 링크를 눌러 주세요.';
     if (has('For security purposes') || has('rate limit') || has('Too many')) return '잠시 후 다시 시도해 주세요.';
     if (has('Database error saving new user')) return '프로필 생성에 실패했습니다. profiles 테이블과 RLS 정책을 확인해 주세요.';
     if (has('Failed to fetch') || has('NetworkError') || has('network')) return '네트워크 연결을 확인해 주세요.';
@@ -231,18 +233,29 @@
     const { data, error } = await c.auth.signUp({
       email,
       password,
-      // 메타데이터는 profiles 행의 원본이다. 행이 사라지면 여기서 복구한다.
-      options: { data: { nickname: nickname || null, home_area: homeArea || null } },
+      options: {
+        // 메타데이터는 profiles 행의 원본이다. 행이 없으면 여기서 복구한다.
+        data: { nickname: nickname || null, home_area: homeArea || null },
+        // 인증 링크를 눌렀을 때 돌아올 자리. location.origin이라 localhost와
+        // 배포 URL이 자동으로 갈린다. 단, 두 주소 모두 Supabase 대시보드의
+        // Authentication > URL Configuration > Redirect URLs에 등록되어 있어야
+        // 한다. 없으면 Site URL로 떨어진다.
+        emailRedirectTo: location.origin + '/login.html?confirmed=1',
+      },
     });
     if (error) return { ok: false, error: toKorean(error) };
 
-    // Confirm email을 껐으므로 여기서 세션이 살아 있어야 하고, 그래야 auth.uid()가
-    // 잡혀 profiles_insert_own 정책을 통과한다. 세션이 없으면 설정이 안 된 것이다.
+    // Confirm email이 켜져 있으면 세션 없이 돌아온다. 에러가 아니라 정상 경로다.
+    //
+    // 프로필은 지금 만들 수 없다 — auth.uid()가 없어서 profiles_insert_own을
+    // 통과하지 못한다. 대신 nickname·home_area가 options.data로 user_metadata에
+    // 실려 있으므로, 인증을 마치고 처음 들어올 때 ensureProfile()이 그걸로 행을
+    // 만든다. 트리거를 두지 않아도 되는 이유가 여기서도 그대로 유지된다.
+    //
+    // 이미 가입된 이메일이어도 Supabase는 같은 모양으로 응답한다(identities가 빈
+    // 배열이다). 그걸 구분해서 알려주지 않는다 — 가입 여부를 캐낼 수 있게 된다.
     if (!data.session) {
-      return {
-        ok: false,
-        error: '이메일 인증이 켜져 있습니다. Supabase 대시보드에서 Confirm email을 꺼 주세요.',
-      };
+      return { ok: true, needsConfirmation: true, email };
     }
 
     state.session = data.session;
@@ -252,6 +265,24 @@
     });
     state.resolved = true;
     emit();
+    return { ok: true };
+  }
+
+  /**
+   * 인증 메일 재발송. 기본 SMTP는 시간당 2통 제한이라 여기서 rate limit을
+   * 자주 만난다 — toKorean이 "잠시 후 다시 시도해 주세요."로 받아낸다.
+   */
+  async function resendConfirmation(email) {
+    const c = client();
+    if (!c) return { ok: false, error: NO_CONFIG };
+    if (!email) return { ok: false, error: '이메일을 입력해 주세요.' };
+
+    const { error } = await c.auth.resend({
+      type: 'signup',
+      email,
+      options: { emailRedirectTo: location.origin + '/login.html?confirmed=1' },
+    });
+    if (error) return { ok: false, error: toKorean(error) };
     return { ok: true };
   }
 
@@ -378,6 +409,7 @@
     signUp,
     signIn,
     signOut,
+    resendConfirmation,
 
     // 내부용. RLS 검증(콘솔에서 직접 쿼리)과 8/25 데이터 작업에서 쓴다.
     get _client() {

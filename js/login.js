@@ -12,11 +12,20 @@
  *   #auth-switch-hint 전환 버튼 앞의 안내 문구
  *   [data-signup-only] 회원가입에서만 보이는 블록들
  *   #state-nokey      Supabase 설정이 없을 때의 안내 (search.html과 같은 컴포넌트)
+ *   #state-sent       인증 메일을 보낸 뒤의 안내 (#auth-sent-email · #auth-resend)
  */
 (() => {
   'use strict';
 
   const byId = (id) => document.getElementById(id);
+
+  /**
+   * 인증 링크가 실패했을 때 Supabase는 #error_description=... 을 달고 돌려보낸다.
+   * supabase-js가 detectSessionInUrl로 해시를 지우기 전에 읽어 둔다 —
+   * 이 파일은 js/auth.js 다음에 평가되지만 auth.js의 초기화는
+   * DOMContentLoaded로 미뤄져 있어서 여기가 아직 먼저다.
+   */
+  const initialHash = location.hash || '';
 
   /* ── 토스트 ─────────────────────────────────────────── */
 
@@ -44,6 +53,30 @@
     if (!box) return;
     box.textContent = message || '';
     box.hidden = !message;
+  }
+
+  /* ── 인증 메일 대기 ─────────────────────────────────── */
+
+  // 재발송에 쓴다. 안내 화면에서는 입력칸이 이미 사라진 뒤다.
+  let sentTo = '';
+
+  function showSent(email) {
+    sentTo = email;
+    const card = byId('auth-card');
+    const sent = byId('state-sent');
+    const label = byId('auth-sent-email');
+    if (label) label.textContent = email;
+    if (card) card.hidden = true;
+    if (sent) sent.hidden = false;
+  }
+
+  async function handleResend(event) {
+    const btn = event.currentTarget;
+    btn.disabled = true;
+    const result = await window.FvAuth.resendConfirmation(sentTo);
+    btn.disabled = false;
+    // 기본 SMTP는 시간당 2통이라 여기서 rate limit을 자주 만난다.
+    showToast(result.ok ? '인증 메일을 다시 보냈습니다' : result.error);
   }
 
   /* ── 모드 전환 ──────────────────────────────────────── */
@@ -131,6 +164,13 @@
       return;
     }
 
+    // Confirm email이 켜져 있으면 세션 없이 성공한다. 홈으로 보내면 안 된다 —
+    // 아직 로그인 상태가 아니고, 사용자가 할 일이 남았다.
+    if (result.needsConfirmation) {
+      showSent(result.email || email);
+      return;
+    }
+
     showToast(signup ? '가입이 끝났습니다' : '로그인되었습니다');
     // replace를 쓴다. 뒤로 가기로 로그인 폼에 되돌아오면 이상하다.
     setTimeout(() => location.replace('index.html'), 400);
@@ -177,6 +217,30 @@
     note.hidden = false;
   }
 
+  /* ── 인증 링크로 돌아왔을 때 ────────────────────────── */
+
+  /**
+   * supabase-js가 URL의 토큰을 세션으로 바꿔 놓았는지 보고 갈린다.
+   * 링크가 만료됐거나 이미 쓴 링크면 세션 대신 #error_description이 온다.
+   */
+  async function handleConfirmReturn() {
+    await window.FvAuth.ready();
+
+    if (window.FvAuth.getSession()) {
+      showToast('이메일 인증이 끝났습니다');
+      setTimeout(() => location.replace('index.html'), 600);
+      return;
+    }
+
+    const described = new URLSearchParams(initialHash.replace(/^#/, '')).get('error_description');
+    if (described) console.warn('[login]', described);
+    showError(
+      described
+        ? '인증 링크가 만료되었거나 이미 사용되었습니다. 다시 로그인해 주세요.'
+        : '인증을 확인하지 못했습니다. 다시 로그인해 주세요.'
+    );
+  }
+
   /* ── 초기화 ─────────────────────────────────────────── */
 
   function init() {
@@ -192,10 +256,17 @@
     }
     if (nokey) nokey.hidden = true;
 
+    const params = new URLSearchParams(location.search);
+
     // ?mode=signup 으로 들어오면 회원가입으로 연다. 히어로의 #start-btn이나
     // 나중에 붙일 안내 링크가 이 파라미터를 쓸 수 있다.
-    const wanted = new URLSearchParams(location.search).get('mode');
-    setMode(wanted === 'signup' ? 'signup' : 'signin');
+    setMode(params.get('mode') === 'signup' ? 'signup' : 'signin');
+
+    const resend = byId('auth-resend');
+    if (resend) resend.addEventListener('click', handleResend);
+
+    // 인증 메일의 링크를 눌러 돌아온 자리다 (auth.js의 emailRedirectTo).
+    if (params.has('confirmed')) handleConfirmReturn();
 
     if (form) form.addEventListener('submit', handleSubmit);
 
