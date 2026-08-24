@@ -13,9 +13,11 @@ const TONE_CLASSES = ['bg-cream', 'bg-cream-deep', 'bg-cream-deeper'];
 /**
  * 검색은 더 이상 여기 없다. 히어로 폼(#hero-search-form)이 네이티브 GET으로
  * search.html로 이동하므로 가로챌 이유가 사라졌다.
+ *
+ * 로그인도 8/24에 빠졌다. #start-btn은 <a href="login.html">이 되었고,
+ * 로그인 상태에 따른 문구와 토스트는 js/auth.js가 갖는다.
  */
 const TOAST_MESSAGES = {
-  login: '로그인은 8월 24일에 열립니다',
   detail: '리뷰 상세는 8월 18일에 열립니다',
 };
 
@@ -303,17 +305,13 @@ function initScrollReveal() {
  * 히어로 검색 폼은 여기서 손대지 않는다. action="search.html" method="get"으로
  * 그대로 이동해야 하고, JS가 죽어도 동작해야 한다. preventDefault를 걸면
  * 이동이 막힌다.
+ *
+ * #start-btn도 같은 이유로 여기 없다. 8/24에 <a href="login.html">이 되면서
+ * 바인딩 없이도 동작하게 되었고, 로그인 상태에 따른 처리는 js/auth.js가 맡는다.
  */
-function bindFakeActions() {
-  const startBtn = document.getElementById('start-btn');
-  if (startBtn) {
-    startBtn.addEventListener('click', () => showToast(TOAST_MESSAGES.login));
-  }
-}
 
 renderRestaurants();
 renderLogs();
 renderFeatures();
-bindFakeActions();
 initLogControls();
 initScrollReveal();

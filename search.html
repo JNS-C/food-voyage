@@ -23,6 +23,7 @@
   고정 ID   : region-input · region-panel · region-listbox · region-status
               search-form · keyword-input · category-chips
               result-grid · result-count · toast · filter-bar
+  헤더 슬롯 : auth-link · auth-name · auth-signout  (js/auth.js가 세 페이지에서 쓴다)
   상태 블록 : state-idle · state-loading · state-empty · state-error · state-nokey
               state-noregion
   템플릿    : #tpl-place-card · #tpl-region-option 의 [data-field] 속성명
@@ -46,6 +47,18 @@
     <!-- 워드마크가 곧 홈 링크다. 터치 타깃 44px을 확보하려고 inline-flex + h-11로 잡는다. -->
     <a href="index.html"
        class="lg-link inline-flex h-11 items-center font-wordmark text-card-title font-semibold lowercase">food-voyage</a>
+
+    <!-- 같은 배경을 공유하는 그룹 안에서 텍스트와 아이콘을 섞지 않는다 (§8.2).
+         지금 보고 있는 페이지라 '맛집 찾기' 링크는 두지 않는다.
+         세션 복원 전에는 셋 다 hidden이다 — js/auth.js가 hidden과 textContent만 건드린다. -->
+    <nav aria-label="주요" class="flex items-center gap-1">
+      <a id="auth-link" href="login.html"
+         class="lg-link inline-flex h-11 items-center px-4 text-nav" hidden>로그인</a>
+      <span id="auth-name"
+            class="hidden xs:inline-flex h-11 items-center px-2 text-nav" hidden></span>
+      <button id="auth-signout" type="button"
+              class="lg-link inline-flex h-11 items-center px-4 text-nav" hidden>로그아웃</button>
+    </nav>
   </div>
 </header>
 
@@ -219,9 +232,15 @@
 
 <!-- config.js는 커밋 대상이라 정상적으로는 늘 있다. onerror는 배포에서 이 파일만
      빠지는 사고를 대비한 그물이다 — 404가 나도 JS 예외 대신 state-nokey를 띄운다. -->
-<script src="config.js" onerror="window.__kakaoConfigMissing = true"></script>
+<script src="config.js" onerror="window.__configMissing = true"></script>
+<!-- UMD 빌드다. 이 저장소에는 type="module"이 하나도 없고, 모듈 스크립트는 defer
+     의미론이라 순서 의존 로딩과 섞이면 window.FvAuth가 없는 순간이 생긴다.
+     버전은 고정한다 (PRD §8 지킬 것 5). 전역 이름은 window.supabase다. -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/dist/umd/supabase.js"
+        onerror="window.__supabaseSdkMissing = true"></script>
 <script src="js/kakao-places.js"></script>
 <script src="js/region-combobox.js"></script>
+<script src="js/auth.js"></script>
 <script src="js/search.js"></script>
 </body>
 </html>

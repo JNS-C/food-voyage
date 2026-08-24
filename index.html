@@ -56,9 +56,17 @@
   <div class="lg-bar-inner mx-auto flex max-w-content items-center justify-between gap-4 px-6 sm:px-8 lg:px-10">
     <p class="font-wordmark text-card-title font-semibold lowercase">food-voyage</p>
     <!-- 같은 배경을 공유하는 그룹 안에서 텍스트와 아이콘을 섞지 않는다 (§8.2) -->
-    <nav aria-label="주요">
+    <nav aria-label="주요" class="flex items-center gap-1">
       <a href="search.html"
          class="lg-link inline-flex h-11 items-center px-4 text-nav">맛집 찾기</a>
+      <!-- 세션 복원 전에는 셋 다 hidden이다 — 틀린 상태가 잠깐 보이는 게 빈칸보다 나쁘다.
+           js/auth.js가 hidden 속성과 textContent만 건드린다. -->
+      <a id="auth-link" href="login.html"
+         class="lg-link inline-flex h-11 items-center px-4 text-nav" hidden>로그인</a>
+      <span id="auth-name"
+            class="hidden xs:inline-flex h-11 items-center px-2 text-nav" hidden></span>
+      <button id="auth-signout" type="button"
+              class="lg-link inline-flex h-11 items-center px-4 text-nav" hidden>로그아웃</button>
     </nav>
   </div>
 </header>
@@ -121,12 +129,18 @@
       </button>
     </form>
 
-    <!-- 로그인은 8/24 예정이라 아직 토스트만 띄운다 -->
+    <!-- 8/24부터 진짜 로그인으로 간다. <button>이 아니라 <a>인 이유는 JS가 죽어도
+         로그인 진입로가 살아 있어야 해서다 — 히어로 폼과 같은 규율이다.
+         로그인한 사람에게는 js/auth.js가 문구를 '항해 이어가기'로 바꾸고 클릭을 가로챈다.
+
+         채움(button-primary)으로 올리지 않는다. DESIGN §"어느 버튼이 채움을 갖는가"가
+         오늘로 미뤄둔 판단인데, 이제 둘 다 동작하므로 중요도로 갈린다 —
+         히어로에서 그 자리에서 완결되는 액션은 검색이고 로그인은 그다음 단계다. -->
     <div class="mt-5">
-      <button id="start-btn" type="button"
-              class="press h-11 rounded-full px-[26px] text-btn text-accent-on-dark transition duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-on-dark">
+      <a id="start-btn" href="login.html"
+         class="press inline-flex h-11 items-center rounded-full px-[26px] text-btn text-accent-on-dark transition duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-on-dark">
         항해 시작하기
-      </button>
+      </a>
     </div>
 
     <p class="mt-4 text-caption text-on-dark-muted">지역을 정하고 음식이나 가게 이름으로 찾습니다.</p>
@@ -233,6 +247,15 @@
 <div id="toast" role="status" aria-live="polite" data-visible="false"
      class="pointer-events-none fixed bottom-8 left-1/2 z-50 max-w-[calc(100vw_-_32px)] rounded-md bg-deep px-5 py-[14px] text-caption text-on-dark"></div>
 
+<!-- config.js는 커밋 대상이라 정상적으로는 늘 있다. onerror는 배포에서 이 파일만
+     빠지는 사고를 대비한 그물이다. -->
+<script src="config.js" onerror="window.__configMissing = true"></script>
+<!-- UMD 빌드다. 이 저장소에는 type="module"이 하나도 없고, 모듈 스크립트는 defer
+     의미론이라 순서 의존 로딩과 섞이면 window.FvAuth가 없는 순간이 생긴다.
+     버전은 고정한다 (PRD §8 지킬 것 5). 전역 이름은 window.supabase다. -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/dist/umd/supabase.js"
+        onerror="window.__supabaseSdkMissing = true"></script>
+<script src="js/auth.js"></script>
 <script src="mock-data.js"></script>
 <script src="script.js"></script>
 </body>

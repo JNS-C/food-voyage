@@ -281,6 +281,10 @@
 /* 상단 바 안의 링크. 배경 없이 vibrancy만 쓴다. */
 .lg-link { color: var(--lg-label); border-radius: var(--lg-r-capsule); }
 
+/* 헤더의 닉네임(8/24). 누를 수 없는 표시라서 링크와 같은 밝기를 주지 않는다.
+   .lg가 상속시키는 --lg-label에서 한 단 내린다. */
+#auth-name { color: var(--lg-label-2); }
+
 
 /* ============================================================
    2. 공통 — index.html 인라인 블록에서 옮겨 온 것들
