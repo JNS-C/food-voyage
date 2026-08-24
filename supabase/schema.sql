@@ -180,3 +180,33 @@ create policy "saved_places_delete_own"
 --   where schemaname = 'public' and tablename = 'saved_places';
 --
 -- select_own(SELECT) · insert_own(INSERT) · delete_own(DELETE) 세 줄.
+
+
+-- ════════════════════════════════════════════════════════
+-- TRUNCATE 권한 회수 (8/24)
+-- ════════════════════════════════════════════════════════
+--
+-- Supabase는 public 스키마에 테이블을 만들 때 anon·authenticated에게
+-- TRUNCATE를 기본으로 함께 준다. profiles·saved_places 모두 그 상태였다.
+--
+-- TRUNCATE는 행 단위 명령이 아니라 테이블을 통째로 비우는 저수준 명령이라
+-- RLS가 적용되지 않는다 — SELECT·INSERT·UPDATE·DELETE 정책은 전부 무의미해지고,
+-- anon 키만 알면(브라우저 소스에 그대로 있다) 모든 사용자의 행을 한 번에
+-- 지울 수 있다. REST API·supabase-js에는 TRUNCATE를 부르는 경로가 없어서
+-- 검색·로그인 같은 정상 사용으로는 절대 발동하지 않는다 — 직접 SQL을 보내야
+-- 실행된다. 그래서 당장 급한 구멍은 아니었지만 있어야 할 이유가 없었다.
+--
+-- SELECT·INSERT·UPDATE·DELETE는 건드리지 않는다. TRUNCATE만 뺀다.
+--
+-- 앞으로 public에 테이블을 새로 만들 때는 grant 문 옆에 이 줄도 같이 적는다.
+-- 그때그때 발견해서 따로 고치지 않는다.
+revoke truncate on public.profiles, public.saved_places from anon, authenticated;
+
+
+-- ── 확인 ────────────────────────────────────────────────
+--   select has_table_privilege('anon', 'public.saved_places', 'TRUNCATE'),
+--          has_table_privilege('authenticated', 'public.saved_places', 'TRUNCATE'),
+--          has_table_privilege('anon', 'public.profiles', 'TRUNCATE'),
+--          has_table_privilege('authenticated', 'public.profiles', 'TRUNCATE');
+--
+-- 네 값 모두 false여야 한다.
