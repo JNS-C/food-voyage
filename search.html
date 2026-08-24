@@ -21,7 +21,8 @@
      클래스·감싸는 마크업·순서는 자유롭게 재디자인한다.
 
   고정 ID   : region-input · region-panel · region-listbox · region-status
-              search-form · keyword-input · category-chips
+              search-form · keyword-input · category-chips · nearby-btn
+              quick-anchors (안의 data-anchor-recent/-recent-title/-presets 포함)
               result-grid · result-count · toast · filter-bar
   헤더 슬롯 : auth-link · auth-name · auth-mypage · auth-signout  (js/auth.js가 네 페이지에서 쓴다)
   상태 블록 : state-idle · state-loading · state-empty · state-error · state-nokey
@@ -84,21 +85,35 @@
        --lg-r-group이 --lg-target과 --lg-pad로부터 계산되므로 밀도가 바뀌어도 유지된다. -->
   <div id="filter-bar" class="lg lg-group sm:mt-8 sm:mb-6 sm:max-w-[760px]">
 
-    <!-- 기능별 그룹 ①: 검색. 텍스트 아이템끼리만 묶는다 (§8.2) -->
-    <form id="search-form" class="flex flex-wrap items-center gap-2">
-      <!-- ARIA 콤보박스 속성은 js/region-combobox.js가 마운트하며 붙인다.
-           JS가 죽어도 이건 name="region"인 평범한 입력이라 GET 폼이 그대로 동작한다. -->
-      <label for="region-input" class="sr-only">지역</label>
-      <input id="region-input" name="region" type="text" autocomplete="off" placeholder="예: 성수동"
-             class="lg-inner basis-full px-4 text-body sm:basis-auto sm:w-[168px]">
+    <!-- 기능별 그룹 ①: 검색. 텍스트 아이템끼리만 묶는다 (§8.2).
+         모바일은 2행이다 — 1행 [지역 | 내 주변], 2행 [키워드 | 찾기].
+         래퍼 div 2개는 sm:contents로 넓은 폭에서 사라져 기존 한 줄 배치가 복원된다.
+         래퍼는 비인터랙티브라 접근성 트리에 영향이 없다. -->
+    <form id="search-form" class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+      <div class="flex items-center gap-2 sm:contents">
+        <!-- ARIA 콤보박스 속성은 js/region-combobox.js가 마운트하며 붙인다.
+             JS가 죽어도 이건 name="region"인 평범한 입력이라 GET 폼이 그대로 동작한다. -->
+        <label for="region-input" class="sr-only">지역</label>
+        <input id="region-input" name="region" type="text" autocomplete="off" placeholder="예: 성수동"
+               class="lg-inner min-w-0 flex-1 px-4 text-body sm:flex-none sm:w-[168px]">
 
-      <label for="keyword-input" class="sr-only">키워드</label>
-      <input id="keyword-input" name="q" type="text" autocomplete="off" placeholder="파스타 · 가게 이름"
-             class="lg-inner min-w-0 flex-1 px-4 text-body">
+        <!-- 내 주변: geolocation으로 현재 위치 반경 검색. type="button"이라
+             JS가 죽어도 GET 폼 폴백을 건드리지 않는다. 텍스트 아이템이다 —
+             같은 유리 그룹 안에서 아이콘을 섞지 않는다(§8.2). 조용한 .lg-inner다 —
+             황동 prominent는 화면당 하나고 그건 '찾기'다. -->
+        <button id="nearby-btn" type="button" aria-busy="false"
+                class="lg-inner shrink-0 px-4 text-caption">내 주변</button>
+      </div>
 
-      <!-- 화면에서 가장 중요한 액션. 유리를 틴트하는 대신 불투명 황동 fill을 쓴다 —
-           유리 위에 유리를 올리지 않기 위해서다(§2.2 · §6.2). -->
-      <button type="submit" class="lg-prominent shrink-0 px-6 text-btn">찾기</button>
+      <div class="flex items-center gap-2 sm:contents">
+        <label for="keyword-input" class="sr-only">키워드</label>
+        <input id="keyword-input" name="q" type="text" autocomplete="off" placeholder="파스타 · 가게 이름"
+               class="lg-inner min-w-0 flex-1 px-4 text-body">
+
+        <!-- 화면에서 가장 중요한 액션. 유리를 틴트하는 대신 불투명 황동 fill을 쓴다 —
+             유리 위에 유리를 올리지 않기 위해서다(§2.2 · §6.2). -->
+        <button type="submit" class="lg-prominent shrink-0 px-6 text-btn">찾기</button>
+      </div>
     </form>
 
     <!-- 기능별 그룹 ②: 카테고리 좁히기. 위 그룹과 여백으로 분리한다.
@@ -129,6 +144,27 @@
   <div id="state-idle" class="mt-6 rounded-card border border-hairline bg-white px-6 py-14 text-center">
     <p class="text-card-title font-semibold">아직 아무 데도 안 가봤습니다</p>
     <p class="mt-3 text-body text-ink-72">지역을 입력하고 찾기를 누르세요.</p>
+
+    <!-- 거점 빠른선택. 콘텐츠 면(흰 카드) 안이므로 유리를 쓰지 않는다(§2.1) —
+         칩 실체는 styles.css의 .anchor-chip이다.
+         최근 거점은 js/search.js가 콤보박스의 최근 검색 저장소를 읽어 채운다.
+         비어 있으면 제목과 그룹이 hidden으로 남는다.
+         프리셋에 좌표를 박지 않는다 — 이름만 두면 기존 지역 해석 경로가 좌표와
+         역 반경(800m)을 알아서 잡고, 목록 교체가 이 HTML 편집만으로 끝난다. -->
+    <div id="quick-anchors" class="mt-8">
+      <p data-anchor-recent-title class="text-caption text-ink-48" hidden>최근 거점</p>
+      <div data-anchor-recent class="mt-2 flex flex-wrap justify-center gap-2" hidden></div>
+
+      <p class="mt-6 text-caption text-ink-48">주요 역에서 바로 찾기</p>
+      <div data-anchor-presets class="mt-2 flex flex-wrap justify-center gap-2">
+        <button type="button" data-region="강남역"     class="anchor-chip">강남역</button>
+        <button type="button" data-region="홍대입구역" class="anchor-chip">홍대입구역</button>
+        <button type="button" data-region="성수역"     class="anchor-chip">성수역</button>
+        <button type="button" data-region="잠실역"     class="anchor-chip">잠실역</button>
+        <button type="button" data-region="서울역"     class="anchor-chip">서울역</button>
+        <button type="button" data-region="여의도역"   class="anchor-chip">여의도역</button>
+      </div>
+    </div>
   </div>
 
   <div id="state-loading" class="mt-6 rounded-card border border-hairline bg-white px-6 py-14 text-center" hidden>

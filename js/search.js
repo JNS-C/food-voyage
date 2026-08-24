@@ -350,6 +350,162 @@
       });
   }
 
+  /* ── 내 주변 찾기 ───────────────────────────────────── */
+
+  /**
+   * 위치 획득 옵션. 맛집 검색에 GPS 정밀도는 과하다 — 셀·와이파이 수준이면
+   * 충분하고 빠르다. maximumAge 5분: 방금 쓴 위치를 다시 묻지 않는다.
+   */
+  const GEO_OPTIONS = { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 };
+
+  /** 중복 클릭 가드. disabled를 쓰지 않는다 — 포커스가 튕겨 나간다. */
+  let locating = false;
+
+  function setNearbyBusy(busy) {
+    const button = byId('nearby-btn');
+    if (!button) return;
+    button.setAttribute('aria-busy', busy ? 'true' : 'false');
+    // 라벨 자체가 상태를 말하게 한다. 별도 스피너 없이 낭독까지 해결된다.
+    button.textContent = busy ? '위치 확인 중…' : '내 주변';
+  }
+
+  function geoErrorMessage(error) {
+    const code = error && error.code;
+    if (code === 1) return '위치 권한이 꺼져 있습니다. 브라우저 주소창의 위치 설정을 확인해 주세요';
+    if (code === 3) return '위치 확인이 오래 걸립니다. 잠시 뒤 다시 시도해 주세요';
+    return '현재 위치를 확인하지 못했습니다';
+  }
+
+  /**
+   * 좌표·라벨을 폼에 넣고 검색한다. field.value와 pendingCenter.label을
+   * 같은 문자열로 동시에 세팅해야 runSearch의 label 일치 검사를 통과한다.
+   * 프로그램적 value 변경은 input 이벤트를 안 내므로 bindRegion의 무효화에도
+   * 걸리지 않는다.
+   *
+   * record:false — GPS 유래 좌표·동네를 localStorage에 남기지 않는다.
+   * 동 이름은 '고른 거점'이 아니라 '지금 서 있는 곳'이고, 다음 방문 때는
+   * 이미 다른 곳일 수 있다.
+   */
+  function applyNearby(hit) {
+    const field = regionField();
+    if (!field) return;
+    field.value = hit.label;
+    pendingCenter = { label: hit.label, x: hit.x, y: hit.y, scale: hit.scale || 'walk' };
+    runSearch({ record: false });
+  }
+
+  function runNearbySearch() {
+    if (locating) return;
+    if (!navigator.geolocation) {
+      showSearchToast('이 브라우저에서는 위치를 쓸 수 없습니다');
+      return;
+    }
+    if (!window.KakaoPlaces || !window.KakaoPlaces.reverseRegion) {
+      setState('state-error');
+      return;
+    }
+
+    locating = true;
+    setNearbyBusy(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const x = position.coords.longitude;
+        const y = position.coords.latitude;
+        window.KakaoPlaces.reverseRegion(x, y)
+          // 동 이름을 못 얻어도 좌표는 있다. 라벨만 일반화하고 검색은 간다.
+          .catch(() => ({ label: '내 주변', x, y, scale: 'walk' }))
+          .then((hit) => {
+            locating = false;
+            setNearbyBusy(false);
+            applyNearby(hit);
+          });
+      },
+      (error) => {
+        locating = false;
+        setNearbyBusy(false);
+        showSearchToast(geoErrorMessage(error));
+      },
+      GEO_OPTIONS
+    );
+  }
+
+  function bindNearby() {
+    const button = byId('nearby-btn');
+    if (button) button.addEventListener('click', () => runNearbySearch());
+  }
+
+  /* ── 거점 빠른선택 ──────────────────────────────────── */
+
+  /**
+   * state-idle의 "최근 거점" 칩. 콤보박스의 최근 검색 저장소를 읽기만 한다 —
+   * 쓰기는 콤보박스가 소유한다. 프리셋과 겹치는 라벨은 뺀다(같은 칩 두 개는 소음).
+   */
+  function renderRecentAnchors() {
+    const root = byId('quick-anchors');
+    if (!root || !window.RegionCombobox || typeof window.RegionCombobox.recents !== 'function') return;
+    const wrap = root.querySelector('[data-anchor-recent]');
+    const title = root.querySelector('[data-anchor-recent-title]');
+    if (!wrap) return;
+
+    const presetLabels = new Set(
+      [...root.querySelectorAll('[data-anchor-presets] [data-region]')]
+        .map((chip) => chip.dataset.region)
+    );
+    const recents = window.RegionCombobox.recents()
+      .filter((hit) => !presetLabels.has(hit.label))
+      .slice(0, 4);
+
+    wrap.textContent = '';
+    recents.forEach((hit) => {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'anchor-chip';
+      chip.textContent = hit.label;
+      if (hit.detail) chip.title = hit.detail;
+      chip.dataset.region = hit.label;
+      // 좌표를 아는 항목은 실어 둔다. 클릭 시 지오코딩을 건너뛴다.
+      if (hit.x != null && hit.y != null) {
+        chip.dataset.x = String(hit.x);
+        chip.dataset.y = String(hit.y);
+        chip.dataset.scale = hit.scale || '';
+        chip.dataset.kind = hit.kind || '';
+      }
+      wrap.appendChild(chip);
+    });
+
+    const has = recents.length > 0;
+    wrap.hidden = !has;
+    if (title) title.hidden = !has;
+  }
+
+  function bindAnchors() {
+    const root = byId('quick-anchors');
+    if (!root) return;
+
+    root.addEventListener('click', (event) => {
+      const chip = event.target.closest('[data-region]');
+      if (!chip || !root.contains(chip)) return;
+      const field = regionField();
+      if (!field) return;
+
+      const label = chip.dataset.region || '';
+      field.value = label;
+      // 최근 거점 칩은 좌표를 이미 안다. 프리셋은 이름만 있고, resolveRegionInfo가
+      // 역을 잡으면 scale 'station'(800m·거리순)이 알아서 붙는다 — 좌표 하드코딩 없음.
+      pendingCenter = chip.dataset.x
+        ? {
+            label,
+            x: Number(chip.dataset.x),
+            y: Number(chip.dataset.y),
+            scale: chip.dataset.scale || '',
+            kind: chip.dataset.kind || '',
+          }
+        : null;
+      // record:true — 명시적으로 고른 거점이니 최근 검색에 남긴다(콤보박스 선택과 같은 대우).
+      runSearch();
+    });
+  }
+
   /* ── 초기화 ─────────────────────────────────────────── */
 
   function bindForm() {
@@ -477,7 +633,8 @@
     // cat이 없어도 호출한다. 마크업에 aria-pressed가 하나도 없을 때 첫 칩을 켠다.
     setActiveCategory(params.get('cat') || activeCategory());
 
-    return hasParams;
+    // nearby=1은 랜딩의 '내 주변에서 찾기' 링크다. 값은 init이 소비한다.
+    return { hasParams, nearby: params.get('nearby') === '1' };
   }
 
   /**
@@ -509,6 +666,8 @@
     bindRegion();
     bindChips();
     bindCards();
+    bindNearby();
+    bindAnchors();
 
     // 담기 버튼의 클릭 위임과 담김 목록 선반영. 없으면 카드에 담기 버튼이
     // 그려져 있어도 눌리지 않을 뿐, 검색은 영향을 받지 않는다.
@@ -521,8 +680,10 @@
       console.warn('[search] 지역 제안 마크업(#region-panel)이 없습니다. 평범한 입력으로 동작합니다.');
     }
 
+    renderRecentAnchors();
+
     // 파라미터가 없어도 폼 초기 상태(첫 칩 aria-pressed)는 맞춰 둔다.
-    const hasParams = applyUrlParams();
+    const { hasParams, nearby } = applyUrlParams();
 
     if (!window.KakaoPlaces) {
       // 스크립트 자체가 없는 건 사용자가 config.js로 고칠 수 있는 문제가 아니다.
@@ -535,6 +696,17 @@
     // 늦고, 알아보려고 dapi.kakao.com에 요청을 보낼 이유도 없다.
     if (!window.KakaoPlaces.hasKey()) {
       setState('state-nokey');
+      return;
+    }
+
+    if (nearby) {
+      // 딥링크에 nearby가 남으면 새로고침마다 권한 프롬프트가 다시 뜬다.
+      // 시작 전에 지운다 — 성공 경로는 runSearch의 syncUrl이 어차피 덮지만,
+      // 거부·실패 경로에는 syncUrl이 없다.
+      history.replaceState(null, '', window.location.pathname);
+      // 진입 즉시 실행이지만 프롬프트가 낯설지 않다 — 사용자가 직전 페이지에서
+      // '내 주변에서 찾기'를 눌러 온 직후라 의도 맥락이 살아 있다.
+      runNearbySearch();
       return;
     }
 

@@ -138,10 +138,17 @@
          채움(button-primary)으로 올리지 않는다. DESIGN §"어느 버튼이 채움을 갖는가"가
          오늘로 미뤄둔 판단인데, 이제 둘 다 동작하므로 중요도로 갈린다 —
          히어로에서 그 자리에서 완결되는 액션은 검색이고 로그인은 그다음 단계다. -->
-    <div class="mt-5">
+    <div class="mt-5 flex flex-wrap items-center gap-2">
       <a id="start-btn" href="login.html"
          class="press inline-flex h-11 items-center rounded-full px-[26px] text-btn text-accent-on-dark transition duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-on-dark">
         항해 시작하기
+      </a>
+      <!-- 링크다. 랜딩에는 geolocation도 카카오 SDK도 얹지 않는다 — 위치 권한
+           프롬프트와 실제 검색은 검색 페이지가 ?nearby=1을 보고 처리한다.
+           JS가 통째로 죽어도 검색 페이지로 이동은 된다(정상 강등). -->
+      <a href="search.html?nearby=1"
+         class="press inline-flex h-11 items-center rounded-full px-[26px] text-btn text-accent-on-dark transition duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-on-dark">
+        내 주변에서 찾기
       </a>
     </div>
 

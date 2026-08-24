@@ -27,8 +27,10 @@
    * 아무 일도 안 일어난다. '서울특별시'를 20km 거리순으로 찾으면 시청 주변
    * 15곳만 온다 — 넓은 지역에서는 중심에서 가까운 것보다 질의에 맞는 것이 답이다.
    */
-  const SCALE_RADIUS = { walk: 1500, wide: 5000, broad: 20000 };
-  const SCALE_SORT = { walk: 'DISTANCE', wide: 'ACCURACY', broad: 'ACCURACY' };
+  // station의 800은 도보 10분권이다. 역 검색의 답은 출구에서 걸어갈 수 있는
+  // 곳이지 역세권 끝자락의 유명한 곳이 아니다 — walk보다 좁고, 거리순이다.
+  const SCALE_RADIUS = { station: 800, walk: 1500, wide: 5000, broad: 20000 };
+  const SCALE_SORT = { station: 'DISTANCE', walk: 'DISTANCE', wide: 'ACCURACY', broad: 'ACCURACY' };
   const DEFAULT_SCALE = 'walk';
 
   /** 카카오 상한. 넘겨 보내면 요청 자체가 거절된다. */
@@ -145,25 +147,74 @@
     return DEFAULT_SCALE;
   }
 
+  /** 카카오 장소 카테고리 그룹 코드 중 지하철역. */
+  const STATION_CODE = 'SW8';
+
+  /**
+   * '교통,수송 > 지하철,전철 > 수도권2호선' → '2호선'.
+   * '수도권'만 벗긴다. '부산1호선'·'대구2호선'의 도시 프리픽스는 그 자체가
+   * 구분 정보라 남긴다.
+   */
+  function stationLine(categoryName) {
+    const parts = String(categoryName || '')
+      .split('>')
+      .map((part) => part.trim())
+      .filter(Boolean);
+    const last = parts[parts.length - 1] || '';
+    return last.replace(/^수도권/, '');
+  }
+
+  /**
+   * '성수역 2호선' → '성수역'. 카카오 place_name은 노선을 꼬리에 붙여 온다.
+   * 노선은 detail로 옮겼으므로 label에 남기면 같은 말이 두 번 보인다.
+   */
+  function stripLineSuffix(name, line) {
+    const clean = String(name || '').trim();
+    if (!line) return clean;
+    const tokens = clean.split(' ');
+    const last = tokens[tokens.length - 1];
+    if (tokens.length > 1 && (last === line || last === `수도권${line}`)) {
+      return tokens.slice(0, -1).join(' ');
+    }
+    return clean;
+  }
+
+  /** '서울 성동구 성수동1가 …' → '서울 성동구'. 역 detail의 지역 꼬리표. */
+  function shortRegion(addressName) {
+    return String(addressName || '').split(' ').slice(0, 2).join(' ');
+  }
+
   /**
    * 조회 결과 하나를 제안 항목으로 옮긴다.
    *
    * detail은 장식이 아니라 구분 수단이다. '성수동'은 서울에도 있고 다른 시에도
    * 있어서, 두 번째 줄이 없으면 목록에서 어느 쪽인지 고를 수가 없다.
+   *
+   * 지하철역(SW8)은 별도 kind다. 역을 고른 사람이 원하는 건 그 랜드마크가
+   * 아니라 "역에서 걸어갈 수 있는 곳"이므로 scale이 station(800m)으로 좁아지고,
+   * detail이 주소 대신 노선('2호선 · 서울 성동구')이 된다 — 같은 이름의 역을
+   * 노선으로 구분하는 게 주소보다 빠르다.
    */
   function toRegionHit(item, kind) {
     const isPlace = kind === 'place';
-    const label = isPlace ? item.place_name : item.address_name;
-    const detail = isPlace
-      ? item.road_address_name || item.address_name || ''
-      : (item.road_address && item.road_address.address_name) || '';
+    const isStation = isPlace && String(item.category_group_code || '') === STATION_CODE;
+    const line = isStation ? stationLine(item.category_name) : '';
+
+    const label = isStation
+      ? stripLineSuffix(item.place_name, line)
+      : (isPlace ? item.place_name : item.address_name);
+    const detail = isStation
+      ? [line, shortRegion(item.address_name)].filter(Boolean).join(' · ')
+      : (isPlace
+          ? item.road_address_name || item.address_name || ''
+          : (item.road_address && item.road_address.address_name) || '');
 
     const cleanLabel = String(label || '').trim();
     const cleanDetail = String(detail || '').trim();
 
     return {
       id: `${kind}:${item.id || cleanLabel}`,
-      kind,
+      kind: isStation ? 'station' : kind,
       label: cleanLabel,
       // 도로명은 label과 같은 문자열로 오는 일이 잦다('서울 성동구 연무장길').
       // 같은 줄을 두 번 쓰면 구분에 도움이 안 되고 행만 두 배로 높아진다.
@@ -172,7 +223,7 @@
       y: item.y,
       // 장소 검색으로 잡힌 통칭('정발산'·'연무장길')은 깊이 정보가 없다.
       // 그런 이름은 원래 동네 규모라 walk가 맞다.
-      scale: isPlace ? 'walk' : scaleOf(item),
+      scale: isStation ? 'station' : (isPlace ? 'walk' : scaleOf(item)),
       code: isPlace ? String(item.category_group_code || '') : '',
     };
   }
@@ -231,7 +282,10 @@
     const pending = addressSearchAll(kakao, region)
       .then((hits) => (hits.length ? hits : placeSearchAll(kakao, region)))
       .then((hits) => {
-        const hit = hits[0];
+        // '○○역'을 타이핑하거나 거점 칩으로 눌러도 역이 잡히게 한다.
+        // 역명 검색에서 광고성 상호가 1위로 끼어들면 hits[0]만 봐서는 station
+        // scale을 놓친다 — 역이 목록에 있으면 그쪽이 답이다.
+        const hit = hits.find((h) => h.kind === 'station') || hits[0];
         if (!hit) throw fail(`'${region}' 위치를 찾지 못했습니다.`, 'REGION_NOT_FOUND');
         return { x: hit.x, y: hit.y, scale: hit.scale };
       })
@@ -251,13 +305,18 @@
    * 음식점·카페를 잘라내면 '연무장길'처럼 카테고리에 걸려 색인된 통칭까지
    * 같이 죽는다. 순서만 바꾸고 목록에는 남긴다.
    */
-  const REGIONISH_CODE = /^(SW8|AT4|PO3|CT1)$/;
+  // SW8은 이제 kind:'station'이 먼저 잡으므로 여기서 뺐다. 남겨 두면
+  // "역은 어느 규칙이 처리하나"를 두 군데서 찾게 된다.
+  const REGIONISH_CODE = /^(AT4|PO3|CT1)$/;
 
   function suggestRank(hit) {
     if (hit.kind === 'address') return 0;
-    if (!hit.code) return 1;
-    if (REGIONISH_CODE.test(hit.code)) return 2;
-    return 3;
+    // 역은 주소 다음, 일반 장소 앞이다. 거점 검색의 1급 시민이라 코드 없는
+    // 통칭('정발산')보다도 위에 둔다 — '성수'를 치는 사람 다수가 성수역을 찾는다.
+    if (hit.kind === 'station') return 1;
+    if (!hit.code) return 2;
+    if (REGIONISH_CODE.test(hit.code)) return 3;
+    return 4;
   }
 
   /**
@@ -298,9 +357,34 @@
 
         // 주소를 먼저 흘려 seen을 채운다. 중복이면 장소 쪽이 떨어지는 게 맞다.
         const kept = addresses.filter(usable);
-        const extra = places.filter(usable).sort((a, b) => suggestRank(a) - suggestRank(b));
+        const extras = places.filter(usable);
 
-        return [...kept, ...extra.slice(0, SUGGEST_PLACE_LIMIT)].slice(0, SUGGEST_LIMIT);
+        // 같은 역이 노선마다 한 건씩 온다(왕십리역 4건). 라벨로 접고 노선은
+        // detail에 합친다 — '2호선·수인분당선 · 서울 성동구'. 첫 건의 좌표를 쓴다.
+        const stationByLabel = new Map();
+        extras.forEach((hit) => {
+          if (hit.kind !== 'station') return;
+          const first = stationByLabel.get(hit.label);
+          if (!first) {
+            stationByLabel.set(hit.label, hit);
+            return;
+          }
+          const line = String(hit.detail || '').split(' · ')[0];
+          const lines = String(first.detail || '').split(' · ')[0];
+          if (line && !lines.split('·').includes(line)) {
+            first.detail = first.detail.replace(' · ', `·${line} · `);
+          }
+        });
+        const stations = [...stationByLabel.values()];
+
+        // 장소 상한(3)은 비역 장소에만 건다. '역'이 들어간 질의는 역이 여러 개
+        // 떠도 전부 관련 결과라 소음이 아니다. 전체 상한 8은 그대로다.
+        const others = extras
+          .filter((hit) => hit.kind !== 'station')
+          .sort((a, b) => suggestRank(a) - suggestRank(b))
+          .slice(0, SUGGEST_PLACE_LIMIT);
+
+        return [...kept, ...stations, ...others].slice(0, SUGGEST_LIMIT);
       })
     );
   }
@@ -376,6 +460,9 @@
    */
   function validCenter(center) {
     if (!center) return null;
+    // Number(null)은 0이다. 좌표 없는 항목(최근 검색의 label-only)이 (0,0)
+    // 대서양 좌표로 통과하면 조용히 빈 결과가 나온다 — null은 변환 전에 거른다.
+    if (center.x == null || center.y == null) return null;
     const x = Number(center.x);
     const y = Number(center.y);
     if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
@@ -434,6 +521,45 @@
   }
 
   /**
+   * 좌표 → 동네 라벨. "내 주변" 검색이 입력창에 넣을 이름을 만든다.
+   *
+   * coord2RegionCode는 B(법정동)·H(행정동) 두 건을 준다. B를 우선한다:
+   *  1) 카드 칩의 pickNeighborhood가 뽑는 지번주소 동과 같은 체계다(성수동1가).
+   *  2) 이 라벨이 URL(?region=)로 남았다가 새로고침 때 addressSearch로
+   *     재해석되는데, 법정동명은 지오코딩이 바로 잡는다. 행정동명(성수1가1동)은
+   *     주소 체계에 없어 못 잡는 경우가 있다.
+   *
+   * scale은 walk다 — "내 주변"은 역 거점이 아니라 동네 규모(1500m)가 맞다.
+   *
+   * @returns {Promise<{label, x, y, scale}>}
+   */
+  function reverseRegion(x, y) {
+    const lon = Number(x);
+    const lat = Number(y);
+    if (!Number.isFinite(lon) || !Number.isFinite(lat)) {
+      return Promise.reject(fail('좌표가 올바르지 않습니다.', 'REGION_ERROR'));
+    }
+
+    return loadSdk().then((kakao) => new Promise((resolve, reject) => {
+      new kakao.maps.services.Geocoder().coord2RegionCode(lon, lat, (result, status) => {
+        const ok = status === kakao.maps.services.Status.OK
+          && Array.isArray(result) && result.length > 0;
+        if (!ok) {
+          reject(fail('현재 위치의 동네 이름을 찾지 못했습니다.', 'REGION_ERROR'));
+          return;
+        }
+        const pick = result.find((row) => row.region_type === 'B') || result[0];
+        const label = String(pick.region_3depth_name || pick.region_2depth_name || '').trim();
+        if (!label) {
+          reject(fail('현재 위치의 동네 이름을 찾지 못했습니다.', 'REGION_ERROR'));
+          return;
+        }
+        resolve({ label, x: lon, y: lat, scale: DEFAULT_SCALE });
+      });
+    }));
+  }
+
+  /**
    * 키가 준비돼 있는지만 동기로 답한다. SDK를 건드리지 않으므로 요청이 나가지 않는다.
    *
    * search.js가 페이지 로드 시점에 state-nokey를 띄우려면 검색을 돌려 보기 전에
@@ -443,5 +569,5 @@
     return readKey() !== '';
   }
 
-  window.KakaoPlaces = { searchPlaces, suggestRegions, hasKey };
+  window.KakaoPlaces = { searchPlaces, suggestRegions, reverseRegion, hasKey };
 })();

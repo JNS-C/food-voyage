@@ -68,13 +68,21 @@
     if (!label || label.length > LABEL_MAX) return null;
 
     const detail = typeof entry.detail === 'string' ? entry.detail.slice(0, LABEL_MAX) : '';
-    const x = Number(entry.x);
-    const y = Number(entry.y);
-    const hasCoords = Number.isFinite(x) && Number.isFinite(y);
+    // null을 Number()에 넣으면 0이다 — 좌표 없음이 (0,0) 대서양 좌표로 굳는다.
+    // null은 변환 전에 걸러서 "좌표 없음"으로 남긴다.
+    const x = entry.x == null ? NaN : Number(entry.x);
+    const y = entry.y == null ? NaN : Number(entry.y);
+    let hasCoords = Number.isFinite(x) && Number.isFinite(y);
+    // 과거 버전이 이미 (0,0)으로 굳혀 저장한 항목의 치유. 한국 서비스에서
+    // (0,0)은 나올 수 없는 값이라 좌표 없음으로 되돌린다 — 라벨 지오코딩으로 살아난다.
+    if (hasCoords && x === 0 && y === 0) hasCoords = false;
 
     return {
       id: `recent:${label}`,
-      kind: 'recent',
+      // 원 kind 중 station만 보존한다. 역이었다면 다시 골라도 역이다(800m 유지·
+      // 목록에서 역 표시). 옛 저장 데이터(kind 없음)와 그 외는 'recent'로
+      // 떨어진다 — 마이그레이션이 필요 없다.
+      kind: entry.kind === 'station' ? 'station' : 'recent',
       label,
       detail,
       x: hasCoords ? x : null,
@@ -125,6 +133,8 @@
         x: item.x,
         y: item.y,
         scale: item.scale,
+        // station만 저장한다. 'recent'를 저장하면 다음 읽기에서 의미가 없다.
+        kind: item.kind === 'station' ? 'station' : '',
       }))
     );
   }
@@ -302,6 +312,8 @@
         row.setAttribute('role', 'option');
         row.setAttribute('aria-selected', 'false');
         row.dataset.index = String(index);
+        // 역·최근 같은 종류 구분은 styles.css가 [data-kind]로 그린다. JS는 속성만 단다.
+        row.dataset.kind = hit.kind || '';
 
         const labelNode = row.querySelector('[data-field="label"]');
         if (labelNode) labelNode.textContent = hit.label;
@@ -456,6 +468,8 @@
           x: hit.x,
           y: hit.y,
           scale: hit.scale || '',
+          // 가산적 확장이다 — login.js의 onCommit은 인자를 안 보므로 무해하다.
+          kind: hit.kind || '',
         });
       }
     }
@@ -661,5 +675,7 @@
     };
   }
 
-  window.RegionCombobox = { mount };
+  // recents는 읽기 전용 공개다. search.js의 "최근 거점" 칩이 저장소 로직을
+  // 복제하지 않고 이걸 읽는다 — 쓰기(remember)는 계속 콤보박스만 한다.
+  window.RegionCombobox = { mount, recents: readRecents };
 })();

@@ -473,6 +473,47 @@
   .region-option:hover { background: #F4EFE6; }  /* cream */
 }
 
+/* 지하철역 항목의 detail(노선)은 구분 정보라 본문 잉크에 가깝게 올린다.
+   색만으로 의미를 전달하지 않는다 — 노선명 텍스트 자체가 이미 말하고 있고,
+   이건 훑을 때의 가독성 조정일 뿐이다. */
+.region-option[data-kind="station"] .region-option-detail {
+  color: #4A453C;                 /* ink-72 */
+}
+
+/* 거점 빠른선택 칩 (state-idle 내부). 흰 카드 위라 유리가 아니라 divider-soft
+   면이다 — .lg-chip(유리)과 일부러 다르게 생겼다. 있는 곳이 다르면 생김새도
+   달라야 한다(§2.1 콘텐츠 레이어에 유리 금지). */
+.anchor-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--lg-target);   /* 44px 터치 타깃 */
+  padding: 0 16px;
+  border-radius: 999px;
+  background: #EFE8DB;            /* divider-soft */
+  color: #4A453C;                 /* ink-72 */
+  font-size: 14px;                /* caption */
+  letter-spacing: -0.1px;
+  cursor: pointer;
+  transition:
+    background var(--lg-dur-press) var(--lg-ease-standard),
+    color      var(--lg-dur-press) var(--lg-ease-standard),
+    transform  var(--lg-dur-press) var(--lg-ease-standard);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .anchor-chip:hover {
+    background: #EAE1D2;          /* cream-deep */
+    color: #1C1A17;               /* ink */
+  }
+}
+
+.anchor-chip:active { transform: scale(0.97); }
+
+.anchor-chip:focus-visible {
+  outline: 2px solid #C97B3E;     /* accent-focus — 밝은 면 위의 포커스 링 */
+  outline-offset: 2px;
+}
+
 .region-note {
   margin: 0;
   padding: 12px;
@@ -605,5 +646,6 @@
   .press:active { transform: none !important; }
   .lg-inner:active,
   .lg-prominent:active,
-  .lg-chip:active { transform: none; }
+  .lg-chip:active,
+  .anchor-chip:active { transform: none; }
 }
