@@ -25,5 +25,5 @@ window.KAKAO_JS_KEY = '047f4befc0612694f3e813d9aae22232';
  * Supabase 대시보드 > Settings > API 에서 복사한다. 최근 프로젝트는 anon JWT 대신
  * sb_publishable_... 형태를 주는데, 둘 다 createClient에 그대로 넣으면 된다.
  */
-window.SUPABASE_URL = '';
-window.SUPABASE_ANON_KEY = '';
+window.SUPABASE_URL = 'https://ivdugsvsspvvastxdnpk.supabase.co';
+window.SUPABASE_ANON_KEY = 'sb_publishable_SiVDoe6qcfcwi0cqZSXNpg_9isqrTBT';
