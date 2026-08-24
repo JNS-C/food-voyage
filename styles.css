@@ -514,6 +514,181 @@
   outline-offset: 2px;
 }
 
+/* ── 검색 결과 행 선택 상태 ──────────────────────────────
+   행 탭·지도 핀 클릭이 data-selected를 붙인다. 새 색을 만들지 않는다 —
+   divider-soft 면 + 황동 테두리. */
+#result-grid [data-place-id][data-selected="true"] {
+  border-color: #B86B32;          /* accent */
+  background: #EFE8DB;            /* divider-soft */
+}
+
+/* ── 지도 ────────────────────────────────────────────────
+   #map-panel은 hidden이 아니라 data-open 계약이다(search.html 주석 참조).
+   [hidden]{display:none!important}가 lg의 상시 노출을 이기기 때문이다.
+   콘텐츠 레이어라 유리가 아니다 — 흰 테두리 카드 안의 지도 면. */
+#map-panel {
+  position: relative;
+  background: #EAE1D2;            /* cream-deep — 타일이 뜨기 전의 바탕 */
+}
+
+#map-canvas {
+  width: 100%;
+  height: 100%;
+}
+
+/* 지도 위 결과 요약 미러 */
+#map-summary {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  z-index: 5;
+  margin: 0;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid #E0D8C9;      /* hairline */
+  font-size: 14px;
+  letter-spacing: -0.1px;
+  color: #4A453C;                 /* ink-72 */
+}
+
+@media (max-width: 1023px) {
+  /* lg 그리드가 없을 때 #map-col 래퍼가 흐름에 끼지 않게 지운다 */
+  #map-col { display: contents; }
+
+  #map-panel { display: none; }
+  /* 전체 화면 오버레이. z-20 — 필터 바(30)·상단 바(30) 아래라
+     지도 위에서도 검색·칩을 그대로 조작할 수 있다. */
+  #map-panel[data-open="true"] {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+  }
+  /* 오버레이에서는 요약을 상단 바 아래로 내린다 */
+  #map-panel[data-open="true"] #map-summary {
+    top: calc(var(--lg-bar-h) + env(safe-area-inset-top, 0px) + 12px);
+  }
+}
+
+@media (min-width: 1024px) {
+  #map-col {
+    position: sticky;
+    top: calc(var(--lg-bar-h) + env(safe-area-inset-top, 0px) + 24px);
+    height: calc(100vh - var(--lg-bar-h) - env(safe-area-inset-top, 0px) - 48px);
+  }
+  #map-panel {
+    display: block;
+    height: 100%;
+    border-radius: 18px;          /* rounded-card */
+    border: 1px solid #E0D8C9;
+    overflow: hidden;
+  }
+}
+
+/* 모바일 전용 지도 토글. 하단 필터 바(bottom 12 + 높이 ~150) 바로 위 오른쪽.
+   deep 단색 pill — 유리 예산(2개)·황동 채움(1개) 밖의 재질. lg에서는 숨김. */
+#map-toggle {
+  position: fixed;
+  right: 16px;
+  bottom: calc(170px + env(safe-area-inset-bottom, 0px));
+  z-index: 31;
+  height: 44px;
+  padding: 0 20px;
+  border-radius: 999px;
+  background: #0F1B2D;            /* deep */
+  color: #F4EFE6;                 /* on-dark */
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.1px;
+  box-shadow: rgba(28, 26, 23, 0.18) 0 4px 16px;
+  cursor: pointer;
+}
+
+#map-toggle:focus-visible {
+  outline: 2px solid #E0A85C;     /* accent-on-dark — 어두운 면 위의 링 */
+  outline-offset: 2px;
+}
+
+@media (min-width: 1024px) {
+  #map-toggle { display: none; }
+}
+
+/* 지도 오버레이(핀·중심·팝오버). CustomOverlay의 content 노드라 마크업에
+   존재하지 않는 클래스다 — Tailwind가 아니라 여기가 실체다. */
+.map-pin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  background: #FFFFFF;
+  border: 1.5px solid #E0D8C9;
+  color: #1C1A17;                 /* ink — 흰 면 위 숫자. 황동 위 흰 글자는 대비 미달 */
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: rgba(28, 26, 23, 0.22) 0 2px 8px;
+  cursor: pointer;
+}
+
+.map-pin[data-selected="true"] {
+  width: 36px;
+  height: 36px;
+  background: #0F1B2D;            /* deep 채움 + accent-on-dark 숫자 (8.17:1) */
+  border: 2px solid #FFFFFF;
+  color: #E0A85C;
+  font-size: 15px;
+}
+
+.map-center-dot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: #0F1B2D;
+  border: 3px solid #FFFFFF;
+  box-shadow: rgba(28, 26, 23, 0.25) 0 2px 8px;
+}
+
+.map-popover {
+  width: 240px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: #FFFFFF;
+  border: 1px solid #E0D8C9;
+  box-shadow: rgba(28, 26, 23, 0.18) 3px 5px 30px;
+}
+
+.map-popover-name {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+  color: #1C1A17;
+}
+
+.map-popover-meta {
+  margin: 4px 0 0;
+  font-size: 14px;
+  letter-spacing: -0.1px;
+  color: #4A453C;
+}
+
+.map-popover-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  margin-top: 6px;
+  font-size: 14px;
+  letter-spacing: -0.1px;
+  color: #4A453C;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
 .region-note {
   margin: 0;
   padding: 12px;

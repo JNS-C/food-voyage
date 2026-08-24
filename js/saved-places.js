@@ -114,7 +114,10 @@
     const on = saved.has(id);
 
     btn.setAttribute('aria-pressed', on ? 'true' : 'false');
-    btn.textContent = on ? LABEL_ON : LABEL_OFF;
+    // data-save-icon 버튼(원형 닻 아이콘)은 안이 SVG라 textContent를 덮으면
+    // 아이콘이 사라진다. 상태는 aria-pressed(채움 스타일)와 aria-label이 말한다.
+    // 텍스트 버튼('담기'/'담김')은 기존 그대로다 — 다른 화면 하위호환.
+    if (!('saveIcon' in btn.dataset)) btn.textContent = on ? LABEL_ON : LABEL_OFF;
 
     // 카드 루트가 role="button"이라 안쪽 텍스트가 카드 이름으로 흡수된다.
     // 버튼에 이름을 직접 주지 않으면 "담기"가 어느 가게 것인지 사라진다.

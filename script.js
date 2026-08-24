@@ -177,7 +177,8 @@ async function loadForYou(snap) {
   }
 
   try {
-    const places = await window.KakaoPlaces.searchPlaces({ region, keyword: topCat.value });
+    // searchPlaces는 {places, meta}를 돌려준다. 여기는 목록만 쓴다.
+    const { places } = await window.KakaoPlaces.searchPlaces({ region, keyword: topCat.value });
     if (seq !== forYouSeq) return;
 
     // 이미 담은 가게는 뺀다. 더미의 place_id는 seed- 접두사라 카카오 id(숫자

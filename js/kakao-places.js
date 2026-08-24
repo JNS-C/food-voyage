@@ -433,6 +433,11 @@
       x: place.x,
       y: place.y,
       url: place.place_url,
+      // 좌표 기반 검색이면 카카오가 중심으로부터의 거리(미터)를 문자열로 준다.
+      // 빈 문자열을 먼저 걸러야 한다 — Number('')는 0이라 "0m"로 오표기된다.
+      distance: (place.distance == null || place.distance === '')
+        ? null
+        : (Number.isFinite(Number(place.distance)) ? Number(place.distance) : null),
     };
   }
 
@@ -481,12 +486,26 @@
    * @param {string} [params.keyword]      검색어. 비어 있으면 카테고리만으로 찾는다.
    * @param {string} [params.categoryCode] FD6·CE7 같은 코드형만. 한식·일식 같은
    *                                       말형 카테고리는 호출자가 keyword에 합쳐 보낸다.
-   * @returns {Promise<Array<{id, name, neighborhood, category, address, x, y, url}>>}
+   * @param {number} [params.radius]       반경 오버라이드(미터). 사용자가 칩으로 고른 값.
+   *                                       유효하지 않으면 scale 자동값을 쓴다.
+   * @param {string} [params.sort]         'DISTANCE' | 'ACCURACY' 오버라이드. 그 외 값은 무시.
+   * @returns {Promise<{places: Array<{id, name, neighborhood, category, address, x, y, url, distance}>,
+   *                    meta: {x, y, radius, sort, scale}}>}
+   *
+   * meta는 실제로 나간 검색의 확정값이다 — 결과 요약 문구("성수역 800m 안")와
+   * 지도의 중심·반경 원이 이 값 하나를 본다. sort는 SDK enum이 아니라 문자열로
+   * 돌려준다 — 호출자가 SDK를 몰라도 문구를 만들 수 있어야 한다.
    */
-  function searchPlaces({ region, center = null, keyword = '', categoryCode = '' } = {}) {
+  function searchPlaces({ region, center = null, keyword = '', categoryCode = '', radius = null, sort = '' } = {}) {
     const term = String(keyword || '').trim();
     const code = GROUP_CODE.test(categoryCode) ? categoryCode : '';
     const known = validCenter(center);
+
+    // 오버라이드는 검증 후에만 채택한다. 아니면 scale 자동값이다.
+    const radiusOverride = Number.isFinite(Number(radius)) && Number(radius) > 0
+      ? Math.min(Number(radius), RADIUS_MAX)
+      : null;
+    const sortOverride = (sort === 'DISTANCE' || sort === 'ACCURACY') ? sort : null;
 
     return loadSdk()
       .then((kakao) =>
@@ -497,27 +516,33 @@
       )
       .then(({ kakao, coords }) => {
         const scale = SCALE_RADIUS[coords.scale] ? coords.scale : DEFAULT_SCALE;
+        const effRadius = radiusOverride ?? Math.min(SCALE_RADIUS[scale], RADIUS_MAX);
+        // 동네 규모에서는 정확도보다 거리다 — 멀리 있는 유명한 곳은 답이 아니다.
+        // 그보다 넓어지면 반대가 된다. SCALE_SORT 주석 참조.
+        const sortName = sortOverride ?? SCALE_SORT[scale];
+        const meta = { x: Number(coords.x), y: Number(coords.y), radius: effRadius, sort: sortName, scale };
+
         const options = {
           x: coords.x,
           y: coords.y,
-          radius: Math.min(SCALE_RADIUS[scale], RADIUS_MAX),
+          radius: effRadius,
           size: SIZE,
-          // 동네 규모에서는 정확도보다 거리다 — 멀리 있는 유명한 곳은 답이 아니다.
-          // 그보다 넓어지면 반대가 된다. SCALE_SORT 주석 참조.
-          sort: kakao.maps.services.SortBy[SCALE_SORT[scale]],
+          sort: kakao.maps.services.SortBy[sortName],
         };
 
-        if (term) {
+        const request = term
           // 코드가 있으면 같이 걸어 '파스타'가 카페까지 긁어 오는 걸 막는다.
-          const withCode = code ? Object.assign({}, options, { category_group_code: code }) : options;
-          return runSearch(kakao, 'keywordSearch', term, withCode);
-        }
+          ? runSearch(kakao, 'keywordSearch', term,
+              code ? Object.assign({}, options, { category_group_code: code }) : options)
+          // 키워드가 비었을 때만 categorySearch를 쓸 수 있다. 코드가 없으면
+          // 음식점 전체(FD6)로 떨어뜨린다 — 빈 화면보다 그 지역 목록이 낫다.
+          : runSearch(kakao, 'categorySearch', code || 'FD6', options);
 
-        // 키워드가 비었을 때만 categorySearch를 쓸 수 있다. 코드가 없으면
-        // 음식점 전체(FD6)로 떨어뜨린다 — 빈 화면보다 그 지역 목록이 낫다.
-        return runSearch(kakao, 'categorySearch', code || 'FD6', options);
-      })
-      .then((data) => data.map((place) => normalize(place, region)));
+        return request.then((data) => ({
+          places: data.map((place) => normalize(place, region)),
+          meta,
+        }));
+      });
   }
 
   /**
@@ -569,5 +594,7 @@
     return readKey() !== '';
   }
 
-  window.KakaoPlaces = { searchPlaces, suggestRegions, reverseRegion, hasKey };
+  // loadSdk도 내보낸다 — 지도 모듈(js/search-map.js)이 같은 SDK로 kakao.maps.Map을
+  // 만든다. 두 번째 <script> 주입 없이 sdkPromise 캐시를 공유한다.
+  window.KakaoPlaces = { searchPlaces, suggestRegions, reverseRegion, hasKey, loadSdk };
 })();

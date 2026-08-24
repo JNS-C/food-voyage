@@ -33,7 +33,8 @@
   /** 색면 3단계 순환. 실제 색은 design이 [data-tone]으로 건다. */
   const TONE_COUNT = 3;
 
-  const TOAST_DETAIL = '리뷰 상세는 준비 중입니다';
+  /** 반경 칩의 순환 목록(미터). 자동값이 목록 밖이면(구 5km·시 20km) 첫 항목부터 돈다. */
+  const RADIUS_STEPS = [800, 1500, 3000];
 
   /**
    * 검색이 겹칠 때 늦게 도착한 옛 응답이 새 결과를 덮어쓰는 걸 막는다.
@@ -53,6 +54,21 @@
    * 강남구로 고쳤을 때 성수동 좌표로 찾아 놓고 '강남구에서 15곳'이라고 쓴다.
    */
   let pendingCenter = null;
+
+  /**
+   * 반경·정렬 오버라이드. null이면 scale 자동값(kakao-places의 SCALE_RADIUS/SORT)이다.
+   * 메모리에만 산다 — 거점이 바뀌면 자동으로 리셋한다(runSearch 시작부).
+   * 자동 반경은 규모별로 튜닝돼 있어서(역 800/동네 1500/구 5000), 강남구로
+   * 옮겼는데 800m 오버라이드가 남으면 결과가 비는 이유를 알 수 없게 된다.
+   */
+  let userRadius = null;
+  let userSort = null;
+
+  /** 마지막 성공 검색의 확정값들. 요약 문구·칩 라벨·지도가 이걸 본다. */
+  let lastMeta = null;
+  let lastPlaces = [];
+  let lastSearchedRegion = '';
+  let selectedPlaceId = null;
 
   /* ── DOM 조회 ───────────────────────────────────────── */
 
@@ -148,6 +164,216 @@
     if (count) count.textContent = text;
   }
 
+  /* ── 결과 요약 · 반경/정렬 칩 ───────────────────────── */
+
+  /** 800 → '800m', 1500 → '1.5km', 3000 → '3km' */
+  function fmtRadius(meters) {
+    const m = Number(meters);
+    if (!Number.isFinite(m)) return '';
+    return m < 1000 ? `${m}m` : `${(m / 1000).toFixed(1).replace(/\.0$/, '')}km`;
+  }
+
+  function fmtSort(sort) {
+    return sort === 'ACCURACY' ? '정확도순' : '거리순';
+  }
+
+  /**
+   * "성수역 800m 안 · 가까운 15곳 · 거리순". 상한(15)은 카카오가 주는 최대치라
+   * "가까운 N곳"이 정확한 말이다 — 정확도순에서는 "가까운"이 참말이 아니라 뺀다.
+   */
+  function setSummary(region, meta, count) {
+    const node = byId('result-count');
+    if (!node) return;
+    node.textContent = '';
+    const strong = document.createElement('strong');
+    strong.className = 'font-semibold text-ink';
+    strong.textContent = `${region} ${fmtRadius(meta.radius)} 안`;
+    node.append(
+      strong,
+      document.createTextNode(
+        meta.sort === 'ACCURACY' ? ` · ${count}곳 · 정확도순` : ` · 가까운 ${count}곳 · 거리순`
+      )
+    );
+
+    // 지도 위 미러 — 지도만 보고 있어도 무엇의 결과인지 읽힌다.
+    const mirror = byId('map-summary');
+    if (mirror) {
+      mirror.textContent = `${region} ${fmtRadius(meta.radius)} · ${count}곳`;
+      mirror.hidden = false;
+    }
+  }
+
+  /** 칩 라벨을 실효값으로 갱신한다. 자동 상태도 구체 값("800m")으로 보인다. */
+  function syncResultControls(show) {
+    const wrap = byId('result-controls');
+    if (!wrap) return;
+    wrap.hidden = !show || !lastMeta;
+    if (wrap.hidden) return;
+
+    const radiusChip = byId('radius-chip');
+    if (radiusChip) {
+      radiusChip.textContent = `반경 ${fmtRadius(lastMeta.radius)}`;
+      radiusChip.setAttribute('aria-label', `반경 ${fmtRadius(lastMeta.radius)}. 누르면 다음 반경으로 다시 찾습니다`);
+    }
+    const sortChip = byId('sort-chip');
+    if (sortChip) {
+      sortChip.textContent = fmtSort(lastMeta.sort);
+      sortChip.setAttribute('aria-label', `${fmtSort(lastMeta.sort)} 정렬. 누르면 정렬을 바꿔 다시 찾습니다`);
+    }
+  }
+
+  function bindResultControls() {
+    const radiusChip = byId('radius-chip');
+    if (radiusChip) {
+      radiusChip.addEventListener('click', () => {
+        if (!lastMeta) return;
+        // 실효 반경의 다음 항목으로. 자동값이 목록 밖(5km·20km)이면 첫 항목부터.
+        const at = RADIUS_STEPS.indexOf(lastMeta.radius);
+        userRadius = RADIUS_STEPS[(at + 1) % RADIUS_STEPS.length];
+        runSearch({ record: false });
+      });
+    }
+    const sortChip = byId('sort-chip');
+    if (sortChip) {
+      sortChip.addEventListener('click', () => {
+        if (!lastMeta) return;
+        userSort = lastMeta.sort === 'DISTANCE' ? 'ACCURACY' : 'DISTANCE';
+        runSearch({ record: false });
+      });
+    }
+  }
+
+  /* ── 거점 칩(통합 pill) ─────────────────────────────── */
+
+  /**
+   * 검색이 성공하면 region 입력이 확정 거점 칩([성수역 ×])으로 바뀐다.
+   * input은 hidden으로 숨길 뿐 값은 유지한다 — GET 폴백(name=region)과
+   * 콤보박스 mount가 무손상이고, 폼 제출도 그대로 값을 실어 보낸다.
+   */
+  function setAnchorChip(label) {
+    const pill = byId('anchor-pill');
+    const field = regionField();
+    if (!pill || !field || field.tagName === 'SELECT') return;
+    // 제안 패널이 열린 채 input이 숨겨지면 패널만 허공에 남는다. 확정과 함께 닫는다.
+    if (combobox) combobox.close();
+    const labelBtn = pill.querySelector('[data-anchor-edit]');
+    if (labelBtn) {
+      labelBtn.textContent = label;
+      labelBtn.setAttribute('aria-label', `거점 ${label}. 누르면 바꿀 수 있습니다`);
+    }
+    field.hidden = true;
+    pill.hidden = false;
+  }
+
+  /** 편집 모드 — 칩을 걷고 input으로 돌아간다. 값은 그대로라 이어서 고치면 된다. */
+  function enterAnchorEdit() {
+    const pill = byId('anchor-pill');
+    const field = regionField();
+    if (!pill || !field) return;
+    pill.hidden = true;
+    field.hidden = false;
+    field.focus();
+    if (typeof field.select === 'function') field.select();
+    // pendingCenter는 그대로 둔다 — 텍스트가 실제로 바뀌는 순간
+    // bindRegion의 input 리스너가 알아서 버린다.
+  }
+
+  /** 거점 해제 — 좌표·텍스트·URL의 region을 함께 비운다. */
+  function clearAnchor() {
+    const pill = byId('anchor-pill');
+    const field = regionField();
+    if (!pill || !field) return;
+    pendingCenter = null;
+    field.value = '';
+    pill.hidden = true;
+    field.hidden = false;
+    field.focus();
+    const input = byId('keyword-input');
+    syncUrl('', input ? input.value.trim() : '', activeCategory());
+  }
+
+  function bindAnchorPill() {
+    const pill = byId('anchor-pill');
+    if (!pill) return;
+    const editBtn = pill.querySelector('[data-anchor-edit]');
+    if (editBtn) editBtn.addEventListener('click', enterAnchorEdit);
+    const clearBtn = pill.querySelector('[data-anchor-clear]');
+    if (clearBtn) clearBtn.addEventListener('click', clearAnchor);
+  }
+
+  /* ── 지도 연동 ──────────────────────────────────────── */
+
+  function isWide() {
+    return window.matchMedia('(min-width: 1024px)').matches;
+  }
+
+  function mapOpen() {
+    const panel = byId('map-panel');
+    return !!panel && panel.dataset.open === 'true';
+  }
+
+  function updateMap() {
+    if (!window.FvSearchMap) return;
+    // 안 보이는 상태(모바일·지도 닫힘)면 모듈이 데이터만 보관했다가
+    // 열리는 순간(relayout) 그린다.
+    window.FvSearchMap.update(lastMeta, lastPlaces);
+  }
+
+  /** 결과가 있고 모바일일 때만 토글을 보인다. lg에서는 CSS가 어차피 숨긴다. */
+  function syncMapToggle() {
+    const toggle = byId('map-toggle');
+    if (!toggle) return;
+    toggle.hidden = lastPlaces.length === 0;
+  }
+
+  function setMapOpen(open) {
+    const panel = byId('map-panel');
+    const toggle = byId('map-toggle');
+    if (!panel) return;
+    panel.dataset.open = open ? 'true' : 'false';
+    if (toggle) {
+      toggle.setAttribute('aria-pressed', open ? 'true' : 'false');
+      toggle.textContent = open ? '목록으로' : '지도로 보기';
+    }
+    if (open && window.FvSearchMap) window.FvSearchMap.relayout();
+  }
+
+  function bindMapToggle() {
+    const toggle = byId('map-toggle');
+    if (!toggle) return;
+    toggle.addEventListener('click', () => setMapOpen(!mapOpen()));
+  }
+
+  /* ── 행 ↔ 핀 선택 연동 ──────────────────────────────── */
+
+  /**
+   * @param {string} id
+   * @param {object} [options]
+   * @param {string} [options.from] 'map'이면 핀 클릭이 출발점 — 지도는 이미
+   *        자기 강조를 끝냈으므로 행 강조·스크롤만 한다.
+   */
+  function selectPlace(id, options) {
+    const from = options && options.from;
+    selectedPlaceId = id ? String(id) : null;
+
+    const grid = byId('result-grid');
+    if (grid) {
+      grid.querySelectorAll('[data-place-id]').forEach((card) => {
+        if (selectedPlaceId && card.dataset.placeId === selectedPlaceId) {
+          card.dataset.selected = 'true';
+          // smooth를 쓰지 않는다 — prefers-reduced-motion 관례.
+          if (from === 'map') card.scrollIntoView({ block: 'nearest' });
+        } else {
+          delete card.dataset.selected;
+        }
+      });
+    }
+
+    if (from !== 'map' && selectedPlaceId && window.FvSearchMap) {
+      window.FvSearchMap.select(selectedPlaceId, { pan: true });
+    }
+  }
+
   /* ── 토스트 ─────────────────────────────────────────── */
 
   /**
@@ -207,6 +433,33 @@
       setField(fragment, 'name', place.name);
       setField(fragment, 'neighborhood', place.neighborhood);
       setField(fragment, 'category', place.category);
+
+      // 순위 = 지도 핀 번호. 템플릿이 lg에서만 보이게 처리한다.
+      setField(fragment, 'rank', String(index + 1));
+
+      // 거리 뱃지. 좌표 기반 검색이면 카카오가 준다 — 없으면 뱃지째 숨긴다.
+      const distanceNode = fragment.querySelector('[data-field="distance"]');
+      if (distanceNode) {
+        const label = fmtRadius(place.distance);
+        distanceNode.textContent = label;
+        distanceNode.hidden = !label;
+      }
+
+      // 카테고리가 비면 구분점(·)도 같이 걷는다.
+      const sep = fragment.querySelector('[data-sep]');
+      if (sep) sep.hidden = !place.category;
+
+      // 명시적 외부 이동. 탭=선택, 링크=이동으로 분리한다.
+      const mapLink = fragment.querySelector('[data-maplink]');
+      if (mapLink) {
+        if (place.url) {
+          mapLink.href = place.url;
+          mapLink.hidden = false;
+          mapLink.setAttribute('aria-label', `${place.name} 카카오맵에서 보기`);
+        } else {
+          mapLink.hidden = true;
+        }
+      }
 
       grid.appendChild(fragment);
     });
@@ -282,6 +535,13 @@
     const keyword = input ? input.value.trim() : '';
     const category = activeCategory();
 
+    // 거점이 바뀌면 반경·정렬 오버라이드를 버린다 — 자동 반경은 규모별로
+    // 튜닝돼 있어서, 남겨 두면 강남구에서 800m로 찾는 이유를 알 수 없게 된다.
+    if (region !== lastSearchedRegion) {
+      userRadius = null;
+      userSort = null;
+    }
+
     syncUrl(region, keyword, category);
 
     if (!window.KakaoPlaces) {
@@ -310,8 +570,10 @@
       center,
       keyword: query.keyword,
       categoryCode: query.categoryCode,
+      radius: userRadius,
+      sort: userSort,
     })
-      .then((places) => {
+      .then(({ places, meta }) => {
         if (token !== requestToken) return; // 이미 다음 검색이 시작됐다
         setBusy(false);
 
@@ -319,6 +581,18 @@
         if (record && combobox) {
           combobox.remember(center || { label: region });
         }
+
+        lastMeta = meta;
+        lastPlaces = places;
+        lastSearchedRegion = region;
+        selectedPlaceId = null;
+
+        // 검색이 성공했다 = 거점이 확정됐다. region 입력이 칩으로 바뀐다.
+        setAnchorChip(region);
+        // 0건이어도 칩은 남긴다 — "반경을 넓히거나"가 바로 실행 가능한 조언이 된다.
+        syncResultControls(true);
+        updateMap();
+        syncMapToggle();
 
         if (places.length === 0) {
           renderPlaces([]);
@@ -328,7 +602,7 @@
         }
 
         renderPlaces(places);
-        setCount(`${region}에서 ${places.length}곳`);
+        setSummary(region, meta, places.length);
         setState(null);
       })
       .catch((error) => {
@@ -336,6 +610,14 @@
         setBusy(false);
         renderPlaces([]);
         setCount('');
+        lastMeta = null;
+        lastPlaces = [];
+        selectedPlaceId = null;
+        syncResultControls(false);
+        syncMapToggle();
+        if (window.FvSearchMap) window.FvSearchMap.clear();
+        const mirror = byId('map-summary');
+        if (mirror) mirror.hidden = true;
         // code로만 분기한다. message는 언제든 바뀌지만 code는 계약이다.
         //   NO_KEY           설정 문제. 사용자가 config.js로 고칠 수 있다.
         //   REGION_NOT_FOUND 오타. 지역이 자유 입력이 되면서 가장 흔해진 실패다.
@@ -577,6 +859,8 @@
    */
   function cardFrom(event, grid) {
     if (event.target.closest('[data-save]')) return null;
+    // 카카오맵 링크는 링크대로 간다 — 선택으로 가로채지 않는다.
+    if (event.target.closest('[data-maplink]')) return null;
     const card = event.target.closest('[data-place-id]');
     return card && grid.contains(card) ? card : null;
   }
@@ -584,6 +868,10 @@
   /**
    * 카드 조작은 그리드에 위임한다. 카드는 매 검색마다 새로 만들어지므로
    * 개별 바인딩은 그때마다 다시 걸어야 한다.
+   *
+   * 행 탭 = 지도 선택. PC는 핀 강조·이동·팝오버, 모바일(지도 닫힘)은 행 강조만이다.
+   * 외부 이동은 행 안의 카카오맵 링크가 한다 — 탭을 통째로 외부 링크로 만들면
+   * 실수 이탈이 잦고 선택 연동과 충돌한다.
    *
    * 카드 루트는 <button>이 아니라 role="button"을 얹은 <article>이다(안에 <h3>가
    * 있어 버튼의 콘텐츠 모델을 위반한다). 그래서 키보드 활성화가 공짜로 안 따라온다 —
@@ -594,21 +882,21 @@
     if (!grid) return;
 
     grid.addEventListener('click', (event) => {
-      if (!cardFrom(event, grid)) return;
-      // 상세 페이지는 이번 범위 밖이다. 카드가 죽어 있는 것처럼 보이지만 않으면 된다.
-      showSearchToast(TOAST_DETAIL);
+      const card = cardFrom(event, grid);
+      if (!card) return;
+      selectPlace(card.dataset.placeId, { from: 'list' });
     });
 
     grid.addEventListener('keydown', (event) => {
       if (event.key !== 'Enter' && event.key !== ' ') return;
-      // 길게 누르면 keydown이 연사된다. 토스트 타이머가 계속 리셋돼 안 사라진다.
       if (event.repeat) return;
-      if (!cardFrom(event, grid)) return;
+      const card = cardFrom(event, grid);
+      if (!card) return;
 
       // Space의 기본 동작은 페이지 스크롤이다. 카드에 포커스를 둔 채 누르면
-      // 토스트가 뜨면서 화면이 한 번 튄다.
+      // 선택되면서 화면이 한 번 튄다.
       event.preventDefault();
-      showSearchToast(TOAST_DETAIL);
+      selectPlace(card.dataset.placeId, { from: 'list' });
     });
   }
 
@@ -668,6 +956,30 @@
     bindCards();
     bindNearby();
     bindAnchors();
+    bindResultControls();
+    bindAnchorPill();
+    bindMapToggle();
+
+    // 지도 모듈. 없어도 검색은 완전 동작한다 — FvSaved와 같은 optional 태도.
+    if (window.FvSearchMap) {
+      window.FvSearchMap.mount({
+        containerId: 'map-canvas',
+        onSelect: (id) => selectPlace(id, { from: 'map' }),
+      });
+
+      // lg 진입(지도 컬럼이 나타남)과 리사이즈 뒤에는 타일 레이아웃을 다시 잡아야 한다.
+      const wide = window.matchMedia('(min-width: 1024px)');
+      const onWideChange = () => {
+        if (wide.matches) window.FvSearchMap.relayout();
+      };
+      if (typeof wide.addEventListener === 'function') wide.addEventListener('change', onWideChange);
+
+      let resizeTimer = null;
+      window.addEventListener('resize', () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => window.FvSearchMap.relayout(), 200);
+      });
+    }
 
     // 담기 버튼의 클릭 위임과 담김 목록 선반영. 없으면 카드에 담기 버튼이
     // 그려져 있어도 눌리지 않을 뿐, 검색은 영향을 받지 않는다.
