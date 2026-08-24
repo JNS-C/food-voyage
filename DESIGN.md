@@ -424,6 +424,8 @@ Pretendard Variable → Pretendard → sans-serif
 
 **브라우저 기본 검증을 끄지 않는다.** `required` · `type="email"` · `minlength`가 한국어로 먼저 걸러 주고, 그 뒤 남는 것만 서버가 판정한다. `novalidate`를 쓰면 그 무료 계층을 버리게 된다.
 
+**인증 대기는 에러가 아니다.** 이메일 인증을 켜면 가입 직후 세션 없이 "메일함을 확인해 주세요" 상태로 넘어간다. 이걸 `{component.form-error}`로 표현하지 않는다 — 사용자가 뭘 잘못한 게 아니라 **할 일이 남은 것**이다. `{component.state-block}`을 그대로 쓰고 재발송 버튼 하나를 `{component.button-quiet}`로 붙인다. 폼은 감춘다. 실패한 입력을 남겨두면 다시 눌러보게 된다.
+
 **모드 전환은 페이지 이동이 아니다.** 로그인과 회원가입은 한 페이지에서 `data-mode` 속성으로 갈린다. 회원가입 전용 블록은 `hidden` 속성으로만 여닫으므로 `display` 계열 유틸리티를 붙이지 않는다 — `{component.state-block}`과 같은 계약이다.
 
 ### Cards
