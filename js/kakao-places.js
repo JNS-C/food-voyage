@@ -68,11 +68,15 @@
   }
 
   /**
-   * config.js가 배포에서 누락되면 404가 나고, search.html의 onerror가
-   * __kakaoConfigMissing을 세운다. 키가 빈 문자열일 때와 같은 취급이다.
+   * config.js가 배포에서 누락되면 404가 나고, 페이지의 onerror가
+   * __configMissing을 세운다. 키가 빈 문자열일 때와 같은 취급이다.
+   *
+   * 8/24부터 config.js는 카카오 키만 담지 않는다 — Supabase 키가 같이 산다.
+   * 그래서 플래그 이름이 __kakaoConfigMissing에서 __configMissing으로 바뀌었다.
+   * 옛 이름도 계속 읽는다. 캐시된 HTML이 옛 onerror를 들고 있을 수 있다.
    */
   function readKey() {
-    if (window.__kakaoConfigMissing) return '';
+    if (window.__configMissing || window.__kakaoConfigMissing) return '';
     return typeof window.KAKAO_JS_KEY === 'string' ? window.KAKAO_JS_KEY.trim() : '';
   }
 
