@@ -220,3 +220,4 @@ scratchpad/
 *.psd
 *.sketch
 *.fig
+.playwright-mcp/
