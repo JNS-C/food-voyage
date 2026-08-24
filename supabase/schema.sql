@@ -111,3 +111,72 @@ create policy "profiles_update_own"
 -- 같이 지워진다. auth.users 는 남으므로 계정 자체를 지우려면
 -- Authentication > Users 에서 직접 지운다 — 그래야 같은 이메일로 다시
 -- 가입할 수 있다.
+
+
+-- ════════════════════════════════════════════════════════
+-- 담기 (8/24)
+-- ════════════════════════════════════════════════════════
+--
+-- 테이블이 이미 있으면 아래를 다시 실행하지 않는다. 새로 만드는 경우가 아니라면
+-- 이 블록만 따로 새 쿼리에 붙여넣어 한 번 돌린다.
+
+
+-- ── saved_places ────────────────────────────────────────
+-- 검색 결과에서 담은 가게. 카카오가 준 값을 담은 시점 그대로 박제한다.
+-- 목록을 그릴 때 카카오를 다시 부르지 않아야 하고(8/25 대시보드),
+-- 가게 정보가 나중에 바뀌어도 기록은 그때 그대로여야 한다.
+create table public.saved_places (
+  user_id      uuid not null references auth.users(id) on delete cascade,
+  place_id     text not null,          -- 카카오 장소 ID. 숫자처럼 보이지만 문자열이다
+  place_name   text not null,
+  category     text,                   -- 예: '한식'
+  address      text,                   -- 도로명 우선, 없으면 지번
+  neighborhood text,                   -- 예: '성수동'. 8/25 동네별 집계의 축이다
+  lat          double precision,       -- 카카오의 y
+  lng          double precision,       -- 카카오의 x
+  created_at   timestamptz not null default now(),
+
+  -- 같은 사람이 같은 가게를 두 번 담을 수 없다.
+  -- 대리키를 두지 않는다 — (누가, 어느 가게)가 이 행의 정체 그 자체이고,
+  -- 담기 취소가 정확히 이 키로 삭제하는 동작이다.
+  primary key (user_id, place_id)
+);
+
+-- 카카오의 x·y를 lng·lat으로 바꿔 저장한다. x가 경도, y가 위도라 이름 그대로
+-- 두면 지도에 넣을 때 뒤집기 쉽다. 저장 시점에 한 번만 정리하고 그 뒤로는
+-- 헷갈릴 여지를 없앤다. 카카오는 둘 다 문자열로 주므로 클라이언트가 Number()한다.
+
+
+-- ── 테이블 권한 ─────────────────────────────────────────
+-- GRANT는 "이 역할이 이 테이블을 만질 수 있는가", RLS는 "그중 어느 행인가"다.
+-- 8/24에 profiles에서 이걸 빠뜨려 42501로 막혔다. 반복하지 않는다.
+grant select, insert, delete on public.saved_places to authenticated;
+-- anon에게는 아무것도 주지 않는다. 본인만 보는 목록이다.
+-- update도 주지 않는다 — 고칠 값이 없다. 담거나 안 담거나 둘뿐이다.
+
+
+-- ── RLS ─────────────────────────────────────────────────
+alter table public.saved_places enable row level security;
+
+-- profiles와 달리 공개 읽기가 없다. 담기는 "가보고 싶은 곳" 위시리스트라
+-- 사적인 성격이 맞다. 나중에 공개로 열려면 select 정책의 using만 바꾸면 된다.
+create policy "saved_places_select_own"
+  on public.saved_places for select
+  using (auth.uid() = user_id);
+
+create policy "saved_places_insert_own"
+  on public.saved_places for insert
+  with check (auth.uid() = user_id);
+
+create policy "saved_places_delete_own"
+  on public.saved_places for delete
+  using (auth.uid() = user_id);
+
+-- update 정책은 만들지 않는다. GRANT도 안 줬으므로 두 층 모두에서 막힌다.
+
+
+-- ── 실행 직후 확인 ──────────────────────────────────────
+--   select policyname, cmd from pg_policies
+--   where schemaname = 'public' and tablename = 'saved_places';
+--
+-- select_own(SELECT) · insert_own(INSERT) · delete_own(DELETE) 세 줄.

@@ -91,6 +91,12 @@
   --lg-dur-press: 140ms;
   --lg-dur-morph: 420ms;
 
+  /* 콘텐츠 레이어(흰 카드) 위의 황동. --lg-tint는 네이비 유리 위에서 쓰라고
+     밝게 만든 값이라 흰 면에서는 대비가 부족하다. DESIGN의 accent / on-accent
+     그대로다. 두 번째 강조색이 아니라 같은 황동의 다른 배경용 값이다. */
+  --accent:    #B86B32;
+  --on-accent: #FFFFFF;
+
   /* card-place 색면 3단계. logic이 data-tone에 숫자를 넣으므로
      Tailwind 클래스가 아니라 속성 선택자로 칠한다. */
   --tone-0: #F4EFE6;
@@ -500,6 +506,19 @@
   .region-clear:hover { color: #1C1A17; }
 }
 
+/* 담기 버튼의 담김 상태 (search.html #tpl-place-card).
+   미담김은 마크업의 button-quiet 유틸리티가 갖고, 채움만 여기서 갖는다.
+
+   Tailwind의 aria-pressed: 변형에 기대지 않는다 — 상태 스타일은 styles.css가
+   소유한다는 이 파일의 규칙이 [data-tone]·#toast와 같다.
+
+   두 번째 강조색을 만들지 않는다(PRD §8-2). 담김은 새 색이 아니라
+   같은 황동이 텍스트에서 채움으로 옮겨 간 것이다. */
+[data-save][aria-pressed="true"] {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
 /* 색면 썸네일. 놓인 물체가 아니라 빈 자리 표시이므로 그림자가 없다. */
 [data-field="thumb"][data-tone="0"] { background-color: var(--tone-0); }
 [data-field="thumb"][data-tone="1"] { background-color: var(--tone-1); }
@@ -569,6 +588,11 @@
   .region-option-detail,
   .region-note,
   .region-clear { color: #4A453C; }
+
+  /* 담김도 같은 이유로 링을 하나 더 그린다. 채움만으로는 구분이 사라질 수 있다. */
+  [data-save][aria-pressed="true"] {
+    box-shadow: inset 0 0 0 2px var(--on-accent);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

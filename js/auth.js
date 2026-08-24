@@ -217,7 +217,7 @@
     // 처럼 실제 설정값을 담아 주므로 그걸 읽는다 — 대시보드에서 길이를 바꿔도
     // 문구가 저절로 따라간다. (login.html의 minlength는 따로 맞춰야 한다.)
     if (has('Password should be at least')) {
-      const n = (raw.match(/(d+)/) || [])[1];
+      const n = (raw.match(/(\d+)/) || [])[1];
       return '비밀번호는 ' + (n || 8) + '자 이상이어야 합니다.';
     }
     // 문자 종류 요구(숫자·대소문자·기호)를 켠 경우.

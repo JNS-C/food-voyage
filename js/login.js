@@ -79,6 +79,21 @@
     showToast(result.ok ? '인증 메일을 다시 보냈습니다' : result.error);
   }
 
+  /* ── 로그인 후 돌아갈 자리 ──────────────────────────── */
+
+  /**
+   * ?next= 를 읽는다. 없거나 수상하면 홈으로 보낸다.
+   *
+   * 이 값은 URL에서 오므로 누구나 심을 수 있다. 절대 URL을 그대로 따라가면
+   * 우리 로그인 화면을 거쳐 남의 사이트로 보내는 미끼가 된다(오픈 리다이렉트).
+   * 그래서 화이트리스트가 아니라 모양을 강제한다 — 같은 폴더의 .html 하나와
+   * 쿼리스트링까지만. '//evil.com'·'https://…'·'../'·'\\evil.com'이 전부 걸린다.
+   */
+  function nextTarget() {
+    const raw = new URLSearchParams(location.search).get('next') || '';
+    return /^[a-z0-9_-]+\.html(\?[^#]*)?$/i.test(raw) ? raw : 'index.html';
+  }
+
   /* ── 모드 전환 ──────────────────────────────────────── */
 
   function currentMode() {
@@ -173,7 +188,7 @@
 
     showToast(signup ? '가입이 끝났습니다' : '로그인되었습니다');
     // replace를 쓴다. 뒤로 가기로 로그인 폼에 되돌아오면 이상하다.
-    setTimeout(() => location.replace('index.html'), 400);
+    setTimeout(() => location.replace(nextTarget()), 400);
   }
 
   /* ── 지역 자동완성 ──────────────────────────────────── */
@@ -228,7 +243,7 @@
 
     if (window.FvAuth.getSession()) {
       showToast('이메일 인증이 끝났습니다');
-      setTimeout(() => location.replace('index.html'), 600);
+      setTimeout(() => location.replace(nextTarget()), 600);
       return;
     }
 

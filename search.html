@@ -27,6 +27,7 @@
   상태 블록 : state-idle · state-loading · state-empty · state-error · state-nokey
               state-noregion
   템플릿    : #tpl-place-card · #tpl-region-option 의 [data-field] 속성명
+              #tpl-place-card 의 [data-save] 버튼 (담기). aria-pressed 가 담김 상태다
 
   배치 제약 : #region-panel 은 <body> 직속이다. #filter-bar 안에 넣으면
               .lg 의 contain:paint 에 잘리고 isolation:isolate 에 갇혀
@@ -191,7 +192,29 @@
     </div>
     <!-- 실제 가게에 가짜 재방문율(닻)을 붙이지 않는다. 기록이 없으면 없다고 쓴다.
          카카오 로컬에는 사진도 재방문 데이터도 없다. 별점·리뷰수·가격대도 넣지 않는다. -->
-    <p data-field="norecord" class="mt-4 text-caption text-ink-48">아직 기록 없음</p>
+    <div class="mt-4 flex items-center justify-between gap-3">
+      <p data-field="norecord" class="text-caption text-ink-48">아직 기록 없음</p>
+
+      <!-- 담기. 눌림 상태는 aria-pressed 하나로 표현하고 색은 황동 하나만 쓴다 —
+           두 번째 강조색을 만들지 않는다(PRD §8-2). 미담김은 button-quiet라
+           테두리를 넣지 않는다(DESIGN Buttons).
+
+           min-h-11로 44px 터치 타깃을 잡는다. text-caption만으로는 37px이다.
+
+           ⚠️ 카드 루트가 role="button"인데 그 안에 버튼이 또 있다. 중첩 인터랙티브라
+              ARIA상 이상적이지 않다 — 카드가 하는 일이 둘이 된 탓이다. 리뷰 상세가
+              열리는 날 카드를 role="button"에서 내리고 제목을 링크로 바꾸는 게 맞다.
+              오늘은 기존 카드 동작을 바꾸지 않기로 해서 aria-label로 보완만 한다.
+
+           담김 상태의 채움은 styles.css의 [data-save][aria-pressed="true"]가 갖는다 —
+           Tailwind의 aria-pressed: 변형은 Play CDN이 생성하지 않는다(실측).
+
+           JS는 aria-pressed · textContent · aria-label만 건드린다. -->
+      <button type="button" data-save aria-pressed="false"
+              class="inline-flex min-h-11 shrink-0 items-center rounded-full px-4 text-caption text-accent transition duration-200 disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-focus">
+        담기
+      </button>
+    </div>
   </article>
 </template>
 
@@ -241,6 +264,7 @@
 <script src="js/kakao-places.js"></script>
 <script src="js/region-combobox.js"></script>
 <script src="js/auth.js"></script>
+<script src="js/saved-places.js"></script>
 <script src="js/search.js"></script>
 </body>
 </html>

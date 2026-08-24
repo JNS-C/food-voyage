@@ -210,6 +210,10 @@
 
       grid.appendChild(fragment);
     });
+
+    // 담기는 이 파일의 관심사가 아니다. 결과만 넘기고 나머지는 그쪽이 한다.
+    // 파일이 없어도 검색은 그대로 동작해야 하므로 존재를 확인하고 부른다.
+    if (window.FvSaved) window.FvSaved.remember(places);
   }
 
   /* ── URL 동기화 ─────────────────────────────────────── */
@@ -407,8 +411,16 @@
     });
   }
 
-  /** 이벤트에서 카드 루트를 찾는다. 그리드 밖이면 무시한다. */
+  /**
+   * 이벤트에서 카드 루트를 찾는다. 그리드 밖이면 무시한다.
+   *
+   * 담기 버튼(js/saved-places.js)은 카드 안에 있지만 카드 클릭이 아니다. 그 버튼과
+   * 이 핸들러는 같은 그리드에 붙어 있어서 stopPropagation으로는 서로를 못 막는다
+   * (같은 노드의 다른 리스너다). 그래서 여기서 걸러낸다 — click과 keydown이
+   * 이 함수를 함께 쓰므로 한 군데만 막으면 된다.
+   */
   function cardFrom(event, grid) {
+    if (event.target.closest('[data-save]')) return null;
     const card = event.target.closest('[data-place-id]');
     return card && grid.contains(card) ? card : null;
   }
@@ -497,6 +509,11 @@
     bindRegion();
     bindChips();
     bindCards();
+
+    // 담기 버튼의 클릭 위임과 담김 목록 선반영. 없으면 카드에 담기 버튼이
+    // 그려져 있어도 눌리지 않을 뿐, 검색은 영향을 받지 않는다.
+    if (window.FvSaved) window.FvSaved.mount({ gridId: 'result-grid' });
+    else console.warn('[search] saved-places.js가 없습니다. 담기 없이 진행합니다.');
 
     combobox = mountCombobox();
     if (window.RegionCombobox && !combobox) {
