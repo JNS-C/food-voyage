@@ -75,6 +75,12 @@ Supabase는 이 둘을 서로 다른 사용자로 보고, 메일은 한 받은�
 
 인증을 끈 채로 갈 거라면 위의 Redirect URLs·배달 테스트는 전부 건너뛰어도 된다. 이메일+비밀번호 로그인에는 리디렉션이 없다.
 
+## Supabase MCP
+
+`.mcp.json`에 Supabase MCP 서버가 등록되어 있다. 붙이면 Claude가 스키마를 직접 실행하고, `auth.users`를 조회하고, 보안 점검(`get_advisors`)을 돌릴 수 있다.
+
+`project_ref`로 이 프로젝트 하나에만 묶여 있고, **파일에 비밀은 없다** — 인증은 각자 브라우저 OAuth로 한다. 처음 쓸 때 `/mcp`에서 supabase 항목을 인증하면 된다.
+
 ## 키를 커밋하는 이유
 
 `config.js`는 **커밋한다.** 카카오 JavaScript 키와 Supabase anon 키는 둘 다 브라우저가 받아가는 값이라 숨길 수단이 없다 — 빌드로 주입해도 배포본에 그대로 실린다. 실제 방어는 다른 층이 한다.
