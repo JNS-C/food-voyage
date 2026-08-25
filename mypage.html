@@ -127,7 +127,12 @@
 
     <div class="min-w-0 flex-1">
       <h3 data-field="name" class="truncate text-body font-semibold"></h3>
-      <p class="mt-1 flex min-w-0 items-center gap-1.5 text-caption text-ink-48">
+      <!-- flex-wrap이 안전망이다. 이 줄의 자식은 전부 shrink-0이라 줄어들 수가
+           없는데, min-w-0 부모는 넘친 만큼을 잘라 주지 않는다 — 그대로 옆의
+           담기 취소(✕) 버튼 위로 흘러 탭을 가로챈다. 지금은 날짜에서 연도를
+           걷어 176px 안에 들어가지만, 카테고리가 더 긴 가게가 오면 다시 넘친다.
+           그때 겹치는 대신 줄바꿈이 되게 해 둔다. 행 높이만 늘고 탭은 안 겹친다. -->
+      <p class="mt-1 flex min-w-0 flex-wrap items-center gap-1.5 text-caption text-ink-48">
         <span data-field="category" class="shrink-0"></span>
         <span data-field="dot" aria-hidden="true">·</span>
         <span data-field="date" class="shrink-0"></span>
