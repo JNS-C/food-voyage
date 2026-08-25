@@ -798,6 +798,17 @@ a, button, input, [role="button"] {
 [data-field="thumb"][data-tone="1"] { background-color: var(--tone-1); }
 [data-field="thumb"][data-tone="2"] { background-color: var(--tone-2); }
 
+/* 진짜 사진에는 {shadow.photo}. 색면에는 주지 않는다 (DESIGN 445) — 그림자는
+   "면 위에 놓인 물체"의 근거이고, 색면은 빈 자리 표시라 근거가 없었다.
+   사진이 들어온 지금 붙인다. 값은 tw-config.js의 shadow.photo와 같다.
+
+   logic이 img.onload에서 data-has-photo를 세운다. 로드 전·실패에는 안 붙으므로
+   색면이 그림자를 받는 순간이 존재하지 않는다. 상태 스타일은 styles.css가
+   소유한다는 이 파일의 규칙이 [data-tone]·#toast와 같다. */
+[data-field="thumb"][data-has-photo="true"] {
+  box-shadow: rgba(28, 26, 23, 0.18) 3px 5px 30px;
+}
+
 
 /* ============================================================
    5. 접근성 오버라이드 (§9 · §10.9)

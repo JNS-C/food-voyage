@@ -15,6 +15,18 @@ npx --yes http-server -p 8000   # 없으면
 
 `http://localhost:8000` — 카카오 JS 키의 도메인 허용목록에 이 주소가 등록되어 있다.
 
+### 서버 함수까지 돌리려면 (구글 사진)
+
+위 두 명령에는 서버리스 런타임이 없어서 `/api/place-photo`가 404를 낸다. **그래도 나머지는 전부 그대로 동작한다** — 썸네일이 색면으로 남을 뿐이다. 사진까지 보려면 Vercel의 로컬 런타임을 쓴다.
+
+```bash
+npx vercel link                              # 한 번만
+npx vercel env pull .env.development.local   # GOOGLE_PLACES_KEY를 받아 온다
+npx vercel dev --listen 8000
+```
+
+> **`--listen 8000`을 빠뜨리지 말 것.** `vercel dev`의 기본 포트는 3000인데, 8000번만 카카오 JS 키 허용목록과 Supabase Redirect URLs에 등록되어 있다. 3000으로 뜨면 카카오가 401을 뱉어 **사진 이전에 검색 자체가 죽는다.**
+
 ## Supabase 설정 (8/24 인증)
 
 `config.js`의 `SUPABASE_URL`·`SUPABASE_ANON_KEY`가 비어 있으면 로그인 페이지가 폼 대신 안내 블록을 띄운다. 채우는 순서는 이렇다.
@@ -98,7 +110,7 @@ Supabase는 이 둘을 서로 다른 사용자로 보고, 메일은 한 받은�
 | 카카오 JS 키 | Kakao Developers의 JavaScript SDK 도메인 허용목록 |
 | Supabase anon 키 | Row Level Security |
 
-진짜 비밀(Gemini 키, `service_role` 키)은 여기 두지 않는다. Vercel 환경변수에 넣고 서버 함수를 거친다 (PRD §4).
+진짜 비밀(Gemini 키, **`GOOGLE_PLACES_KEY`**, `service_role` 키)은 여기 두지 않는다. Vercel 환경변수에 넣고 서버 함수를 거친다 (PRD §4).
 
 ## 구조
 
@@ -116,8 +128,11 @@ js/
   kakao-places.js    window.KakaoPlaces
   region-combobox.js window.RegionCombobox
   saved-places.js    window.FvSaved — 검색 결과 담기, search.html 전용
+  place-photos.js    window.FvPhotos — 카드 썸네일 구글 사진, search.html 전용
   search.js          검색 페이지 컨트롤러
   login.js           로그인 페이지 컨트롤러
+api/
+  place-photo.js  구글 Places 사진 조회. 키를 숨기는 것이 존재 이유다
 supabase/
   schema.sql    profiles·saved_places 테이블 + RLS. 대시보드에 붙여넣는다
 ```
@@ -129,3 +144,30 @@ supabase/
 검색 결과 카드의 `담기` 버튼이 `saved_places`에 (user_id, place_id) 한 행으로 저장된다. 같은 사람이 같은 가게를 두 번 담을 수 없고(기본키), 본인 것만 읽고 쓴다(RLS). `js/saved-places.js`가 `window.FvAuth`의 로그인 상태를 구독해서 칠하므로, 로그인 안 한 채 누르면 안내 후 `login.html?next=`로 보내고 로그인하면 같은 검색 결과로 돌아온다.
 
 담기·취소는 `upsert`가 아니라 `insert` + 중복키(23505) 처리를 쓴다. `saved_places`에는 `update` 권한을 주지 않았는데(고칠 값이 없어서다) `upsert`는 내부적으로 `ON CONFLICT DO UPDATE`라 그 권한을 요구한다.
+
+## 카드 썸네일 사진
+
+카카오 로컬에는 사진이 없어서 검색 결과 썸네일은 색면(크림 3단계 + 가게명 이니셜)이었다. 이제 그 위에 **구글 Places 사진 1장을 덮는다.**
+
+**교체가 아니라 덮기다.** 색면과 이니셜은 그대로 두고 `<img>`를 절대 위치로 올리며, `hidden`을 벗기는 것은 `img.onload` 안에서만이다. 그래서 로딩 중·매칭 실패·URI 만료·403·`/api` 부재 다섯 경우가 **전부 자동으로 색면으로 떨어진다.** 스켈레톤도 "사진 없음" 분기도 없고, `state-*` 블록도 건드리지 않는다 — 사진 없음은 설계된 상태지 실패가 아니다.
+
+**엉뚱한 가게 사진이 붙느니 사진이 없는 편이 낫다.** `api/place-photo.js`가 두 관문을 AND로 통과시킨다.
+
+| 관문 | 기준 | 막는 것 |
+|---|---|---|
+| 거리 | 카카오 좌표에서 200m 이내 | 한 블록 옆 같은 이름 지점 |
+| 이름 | 포함 관계 또는 bigram Dice ≥ 0.5 | 같은 건물 다른 가게 |
+
+거리만 보면 같은 건물 다른 식당이 통과하고, 이름만 보면 맞는 브랜드의 틀린 지점이 통과한다. 그래서 둘 다 필요하다.
+
+**키는 서버 밖으로 안 나간다.** 함수가 `places:searchText`로 장소를 찾고, 사진은 `…/media?skipHttpRedirect=true`로 **서명된 URL만** 받아 넘긴다. 그 URL에는 API 키가 없어서 브라우저에 그대로 줄 수 있고, 이미지 바이트는 구글 CDN에서 직접 받는다 — 우리 인프라를 지나는 이미지 바이트가 0이다.
+
+**과금은 FieldMask가 정한다.** `places.id,places.photos,places.location,places.displayName` 넷에서 늘리지 않는다. `rating`·`reviews`를 넣는 순간 상위 SKU로 올라가는데, 카드에 표시하지도 않을 값이다 (PRD §6-2가 카드의 숫자를 재방문율 하나로 제한한다).
+
+호출 수는 세 겹으로 막는다.
+
+- **앞 8행만** 채운다 (`PHOTO_LIMIT`). 9행 이후는 스크롤해야 닿는 자리다
+- **L0** 인메모리 캐시 — 칩을 누를 때마다 같은 15곳이 다시 렌더되는데, 이게 없으면 칩마다 청구서가 새로 생긴다
+- **L1** `localStorage` 30일 — `photoName`을 캐시해 재방문 시 `searchText`(비싼 쪽)를 통째로 건너뛴다. 단명하는 `photoUri`는 저장하지 않는다. 실패도 7일 캐시한다
+
+> **미해결 부채: 저작자 표시.** 구글은 사진에 `authorAttributions` 표시를 요구하는데 72px 썸네일에는 공간이 없다. 지금은 최소 준수로 썸네일 컨테이너의 `title`에 싣는다. 상세 화면이 생길 때 제대로 해결한다.
