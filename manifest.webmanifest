@@ -1,0 +1,14 @@
+{
+  "name": "food-voyage — 미식 항해일지",
+  "short_name": "food-voyage",
+  "description": "한 곳씩 개척하고 기록하는 미식 항해일지",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0F1B2D",
+  "theme_color": "#0F1B2D",
+  "lang": "ko",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
