@@ -46,7 +46,10 @@
 <header class="lg lg-bar fixed inset-x-0 top-0 z-40">
   <div class="lg-bar-inner mx-auto flex max-w-content items-center justify-between gap-4 px-6 sm:px-8 lg:px-10">
     <a href="index.html"
-       class="lg-link inline-flex h-11 items-center font-wordmark text-card-title font-semibold lowercase">food-voyage</a>
+       class="lg-link brand inline-flex h-11 items-center gap-2 font-wordmark text-card-title font-semibold lowercase">
+      <img src="icons/mark.svg" alt="" class="brand-mark" decoding="async">
+      <span>food-voyage</span>
+    </a>
 
     <!-- 같은 배경을 공유하는 그룹 안에서 텍스트와 아이콘을 섞지 않는다 (§8.2).
          세션 복원 전에는 셋 다 hidden이다 — 틀린 상태가 잠깐 보이는 게 빈칸보다 나쁘다. -->
@@ -78,6 +81,8 @@
 <section class="bg-deep text-on-dark">
   <div class="below-bar mx-auto w-full max-w-content px-6 pb-10 sm:px-8 lg:px-10">
     <div class="mx-auto w-full max-w-[420px]">
+      <!-- 진입 페이지라 브랜드 마크를 크게 두는 유일한 자리. 네이비 위라 타일 없는 글리프다. -->
+      <img src="icons/mark.svg" alt="" class="mb-5 h-14 w-auto" decoding="async">
       <h1 id="auth-title" class="text-hero-2 font-semibold sm:text-hero-3">로그인</h1>
       <p class="mt-4 text-caption text-on-dark-muted">계정을 만들면 항해일지가 남습니다.</p>
     </div>

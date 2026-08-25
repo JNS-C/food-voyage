@@ -1,11 +1,10 @@
-<!-- 브랜드 파비콘: icons/icon.svg(밥그릇 선체 + 돛 + 물결)에 22% 곡률(512의 112)만 더한 것이다.
-     탭·홈 화면·헤더가 같은 마크를 쓴다. 닻은 재방문·담기의 의미 기호라 로고에 쓰지 않는다(PRD §7). -->
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+<!-- food-voyage 브랜드 마크(글리프). icons/icon.svg에서 네이비 타일을 뺀 것으로, 딥 네이비 면(상단 유리 바·타이틀 타일) 위에만 쓴다.
+     밝은 면과 OS 컨테이너(푸터·파비콘·홈 화면)에는 타일이 있는 icon.svg를 쓴다 — 크림 돛은 크림 위에서 대비가 죽는다.
+     viewBox는 글리프 경계(그릇 x 100–412, 돛 위 96, 굽 아래 446)에 8px 여유를 둔 값이라 28px 높이에서 ~25px 폭으로 읽힌다. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="92 88 328 366" width="328" height="366">
   <defs>
-    <radialGradient id="tile" cx="50%" cy="42%" r="70%"><stop offset="0" stop-color="#182A45"/><stop offset="1" stop-color="#0D1826"/></radialGradient>
     <clipPath id="bowl"><path d="M112 300H400C400 372 352 420 298 426H214C162 420 112 372 112 300Z"/></clipPath>
   </defs>
-  <rect width="512" height="512" rx="112" fill="url(#tile)"/>
   <!-- 돛 두 장: 왼쪽으로 치우쳐 항해하는 방향감을 주고, 사이의 좁은 틈이 돛대를 암시한다 -->
   <path d="M244 96C324 134 366 220 372 268H244Z" fill="#F4EFE6"/>
   <path d="M228 152C178 188 158 232 154 268H228Z" fill="#F4EFE6"/>

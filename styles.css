@@ -126,10 +126,23 @@ a, button, input, [role="button"] {
   white-space: nowrap;
 }
 
+/* 브랜드 마크 + 워드마크. 마크는 바 높이 안에서 28px이고, 브랜드 링크와 nav는 둘 다 줄어들지 않는다 —
+   flex가 링크를 쥐어짜면 텍스트가 nav 위로 겹쳐 보인다(nowrap). 넘치면 겹치는 대신 드러나야 고칠 수 있다.
+   420px 미만 예산(360px, 스크롤바 15px 기준): 바 345 − 패딩 32 − nav(링크 3개, 패딩 8) 194 − 간격 12 = 107px.
+   마크 22 + 간격 5 + 워드마크 14px(82) = 107로 딱 맞고, 실제 휴대폰은 스크롤바가 없어 15px이 남는다. */
+.lg .lg-bar-inner .brand { flex: none; }
+.lg .lg-bar-inner .brand-mark { height: 28px; width: auto; flex: none; }
+.lg .lg-bar-inner nav { flex: none; }
+
 @media (max-width: 419px) {
-  .lg .lg-bar-inner { padding-inline: 16px; }
-  .lg .lg-bar-inner .lg-link { padding-inline: 10px; }
-  .lg .lg-bar-inner .font-wordmark { font-size: 18px; }
+  .lg .lg-bar-inner { padding-inline: 16px; column-gap: 12px; }
+  .lg .lg-bar-inner .lg-link { padding-inline: 8px; }
+  .lg .lg-bar-inner .brand { gap: 5px; padding-inline: 0; }
+  .lg .lg-bar-inner .brand-mark { height: 22px; }
+  .lg .lg-bar-inner .font-wordmark { font-size: 15px; }
+}
+@media (max-width: 375px) {
+  .lg .lg-bar-inner .font-wordmark { font-size: 14px; }
 }
 
 /* 히어로 부제는 어떤 폭에서도 한 줄이다(8/24 결정 — 두 줄로 쪼개지 않는다).
