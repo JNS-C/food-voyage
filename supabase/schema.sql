@@ -36,6 +36,10 @@ create table public.profiles (
 --   42501 permission denied for table profiles
 -- 로 막는다. 대시보드의 Policies 화면에는 정책 3개가 멀쩡히 보이기 때문에
 -- 원인이 정책 쪽이 아니라는 걸 알아채기 어렵다.
+-- anon 에게도 select GRANT 는 남긴다. 정책(profiles_select_own)이 이미 모든 행을
+-- 막아서 anon 이 받는 것은 항상 빈 배열이고, GRANT 를 걷으면 대신 42501 이 난다.
+-- .github/workflows/keep-alive.yml 이 anon 키로 이 테이블을 찔러 DB 를 깨우는데,
+-- 그게 200 이어야 워크플로가 실패하지 않는다.
 grant select on public.profiles to anon, authenticated;
 grant insert, update on public.profiles to authenticated;
 -- delete 는 주지 않는다. 대응하는 정책이 없고, 지울 일이 생기면 그때 정한다.
@@ -98,7 +102,7 @@ create policy "profiles_update_own"
 --
 -- B 계정으로 로그인한 상태에서 DevTools 콘솔에:
 --
---   await FvAuth._client.from('profiles')
+--   await FvAuth.db.from('profiles')
 --     .update({ nickname: '침입' }).eq('id', '<A의 uuid>').select();
 --
 -- error 는 null 이고 data 가 빈 배열로 온다. RLS 의 UPDATE 거부는 에러가 아니라
@@ -112,7 +116,7 @@ create policy "profiles_update_own"
 --   select policyname, cmd from pg_policies
 --   where schemaname = 'public' and tablename = 'profiles';
 --
--- profiles_select_public(SELECT) · profiles_insert_own(INSERT) ·
+-- profiles_select_own(SELECT) · profiles_insert_own(INSERT) ·
 -- profiles_update_own(UPDATE) 세 줄이 나와야 한다. 한 줄이라도 없으면
 -- 가입은 되는데 프로필이 안 만들어지거나, 남의 행이 열린다.
 
@@ -190,8 +194,9 @@ grant select, insert, delete on public.saved_places to authenticated;
 -- ── RLS ─────────────────────────────────────────────────
 alter table public.saved_places enable row level security;
 
--- profiles와 달리 공개 읽기가 없다. 담기는 "가보고 싶은 곳" 위시리스트라
--- 사적인 성격이 맞다. 나중에 공개로 열려면 select 정책의 using만 바꾸면 된다.
+-- 공개 읽기가 없다. 담기는 "가보고 싶은 곳" 위시리스트라 사적인 성격이 맞다.
+-- (profiles도 8/28에 같은 모양이 됐다 — 위 profiles_select_own 참조.)
+-- 전체 집계가 필요한 랭킹은 정책을 푸는 대신 security definer RPC가 맡는다.
 create policy "saved_places_select_own"
   on public.saved_places for select
   using (auth.uid() = user_id);
