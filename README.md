@@ -55,8 +55,8 @@ npx vercel dev --listen 8000
 
 **켜면 Redirect URLs를 등록해야 한다.** 인증 링크는 `login.html?confirmed=1`로 돌아온다 (`js/auth.js`의 `emailRedirectTo`가 `location.origin`을 쓴다).
 
-- **Authentication → URL Configuration → Redirect URLs**에 `http://localhost:8000/**`와 배포 URL(`https://<프로젝트>.vercel.app/**`)을 넣는다.
-- Site URL은 배포 URL로 맞춘다. 허용목록에 없는 주소로 돌아오면 전부 여기로 떨어진다.
+- **Authentication → URL Configuration → Redirect URLs**에 `http://localhost:8000/**`와 `https://food-voyage-puce.vercel.app/**`를 넣는다.
+- Site URL은 `https://food-voyage-puce.vercel.app`로 맞춘다. 허용목록에 없는 주소로 돌아오면 전부 여기로 떨어진다.
 
 등록을 빠뜨리면 인증 링크를 눌러도 엉뚱한 곳으로 가고, 화면에는 "인증 링크가 만료되었거나 이미 사용되었습니다"만 뜬다. 원인이 안 보이는 실패라 먼저 확인할 것.
 

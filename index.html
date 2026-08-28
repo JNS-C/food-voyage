@@ -11,9 +11,21 @@
 <link rel="manifest" href="manifest.webmanifest">
 <!-- 모바일 브라우저 크롬을 상단 바와 같은 네이비로 물들인다 -->
 <meta name="theme-color" content="#0F1B2D">
+<link rel="canonical" href="https://food-voyage-puce.vercel.app/">
 <meta property="og:type" content="website">
+<meta property="og:url" content="https://food-voyage-puce.vercel.app/">
+<meta property="og:site_name" content="food-voyage">
+<meta property="og:locale" content="ko_KR">
 <meta property="og:title" content="food-voyage — 한 곳씩 개척하고 기록하는 미식 항해일지">
 <meta property="og:description" content="늘 가던 가게만 가는 게 답답할 때. 다녀온 곳을 항해일지처럼 남기고 아직 비어 있는 구역을 발견하세요.">
+<!-- 정사각 앱 아이콘을 그대로 쓴다. 1200x630 전용 이미지가 아직 없어서,
+     카카오톡·슬랙은 정사각으로 잘 보이지만 트위터 대형 카드에서는 여백이 생긴다.
+     og:image는 절대 URL이어야 한다 — 상대경로는 크롤러가 못 읽는다. -->
+<meta property="og:image" content="https://food-voyage-puce.vercel.app/icons/icon-512.png">
+<meta property="og:image:width" content="512">
+<meta property="og:image:height" content="512">
+<meta property="og:image:alt" content="food-voyage 앱 아이콘 — 밥그릇 선체에 돛을 단 배">
+<meta name="twitter:card" content="summary">
 
 <!-- 본문 서체. CDN 경로에 버전 태그를 반드시 붙인다 (DESIGN.md 서체 로딩) -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css">
