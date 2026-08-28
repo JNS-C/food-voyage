@@ -16,6 +16,9 @@
 
   const byId = (id) => document.getElementById(id);
 
+  /** js/saved-places.js의 TABLE과 같은 값이다. 스키마가 바뀌면 둘 다 본다. */
+  const TABLE = 'saved_places';
+
   /* ── 토스트 ─────────────────────────────────────────── */
 
   /**
@@ -126,10 +129,10 @@
    */
   async function load() {
     setState('loading');
-    const sb = window.FvAuth._client;
+    const sb = window.FvAuth.db;
 
     const { data, error } = await sb
-      .from('saved_places')
+      .from(TABLE)
       .select('place_id, place_name, category, address, neighborhood, lat, lng, created_at')
       .order('created_at', { ascending: false });
 
@@ -161,7 +164,7 @@
   }
 
   async function removeRow(card) {
-    const sb = window.FvAuth._client;
+    const sb = window.FvAuth.db;
     const session = window.FvAuth.getSession();
     if (!sb || !session) return;
 
@@ -195,7 +198,7 @@
     toast(label ? `${label}을(를) 담기 취소했습니다.` : '담기를 취소했습니다.');
 
     const { error } = await sb
-      .from('saved_places')
+      .from(TABLE)
       .delete()
       .eq('user_id', session.user.id)
       .eq('place_id', id);

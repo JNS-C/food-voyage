@@ -27,6 +27,9 @@
   /** 지역 입력 길이 상한. 검색어이지 문서가 아니다. */
   const REGION_MAX = 40;
 
+  /** supabase/schema.sql이 소유하는 이름. 리터럴로 흩어 두지 않는다. */
+  const RPC_SAVE_COUNTS = 'get_save_counts';
+
   /** 코드형 카테고리는 category_group_code로 보낸다. 나머지는 키워드에 합친다. */
   const CODE_CATEGORY = /^(FD6|CE7)$/;
 
@@ -268,8 +271,8 @@
     if (places.length === 0 || !window.FvAuth || !window.FvAuth.isConfigured()) {
       return Promise.resolve(true);
     }
-    return window.FvAuth._client
-      .rpc('get_save_counts', { place_ids: places.map((place) => String(place.id)) })
+    return window.FvAuth.db
+      .rpc(RPC_SAVE_COUNTS, { place_ids: places.map((place) => String(place.id)) })
       .then(({ data, error }) => {
         if (error) throw error;
         const counts = new Map((data || []).map((row) => [String(row.place_id), Number(row.save_count) || 0]));
@@ -343,10 +346,6 @@
   }
 
   /* ── 지도 연동 ──────────────────────────────────────── */
-
-  function isWide() {
-    return window.matchMedia('(min-width: 1024px)').matches;
-  }
 
   function mapOpen() {
     const panel = byId('map-panel');

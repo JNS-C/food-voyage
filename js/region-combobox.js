@@ -160,7 +160,7 @@
    * @param {string} config.statusId   sr-only 라이브 리전. 절대 hidden이 되면 안 된다.
    * @param {string} config.templateId <template>. 행 마크업은 design 소유다.
    * @param {function} config.onCommit 사용자가 후보를 고르면 호출. hit 하나를 받는다.
-   * @returns {{close: function, destroy: function, remember: function}|null}
+   * @returns {{close: function, remember: function}|null}
    *          필수 노드가 없으면 null. 호출자는 그걸 '아직 마크업이 없다'로 읽어야지
    *          오류로 다루면 안 된다.
    */
@@ -675,22 +675,6 @@
 
       /** 타이핑한 채로 검색이 성공했을 때 호출자가 최근 검색에 남긴다. */
       remember: rememberRecent,
-
-      destroy() {
-        window.clearTimeout(debounceTimer);
-        bindViewport(false);
-        field.removeEventListener('input', onInput);
-        field.removeEventListener('compositionstart', onCompositionStart);
-        field.removeEventListener('compositionend', onCompositionEnd);
-        field.removeEventListener('keydown', onKeyDown);
-        field.removeEventListener('focus', onFocus);
-        field.removeEventListener('blur', onBlur);
-        list.removeEventListener('pointerdown', onListPointerDown);
-        list.removeEventListener('click', onListClick);
-        box.removeEventListener('click', onPanelClick);
-        document.removeEventListener('pointerdown', onDocumentPointerDown);
-        close();
-      },
     };
   }
 

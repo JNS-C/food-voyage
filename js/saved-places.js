@@ -84,10 +84,10 @@
 
   /**
    * js/auth.js가 만든 클라이언트를 그대로 쓴다. 두 번째 클라이언트를 만들면
-   * 세션이 갈린다. auth.js가 "8/25 데이터 작업에서 쓴다"고 적어 둔 자리다.
+   * 세션이 갈린다.
    */
   function client() {
-    return window.FvAuth ? window.FvAuth._client : null;
+    return window.FvAuth ? window.FvAuth.db : null;
   }
 
   /* ── 칠하기 ─────────────────────────────────────────── */
