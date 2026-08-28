@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  랜딩 한 장뿐이다. search·login·mypage는 noindex라 여기 넣지 않는다 —
+  sitemap에 올려 두고 noindex를 함께 주면 서로 다른 말을 하는 셈이 된다.
+-->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://food-voyage-puce.vercel.app/</loc>
+    <lastmod>2026-08-28</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+</urlset>

@@ -64,7 +64,7 @@ const FIELD_MASK = 'places.id,places.photos,places.location,places.displayName';
 const SEARCH_URL = 'https://places.googleapis.com/v1/places:searchText';
 
 /**
- * 웜 인스턴스가 공짜로 재사용하는 조회 결과. kakaoId → { photoName } | null.
+ * 웜 인스턴스가 공짜로 재사용하는 조회 결과. warmKey(query) → { photoName } | null.
  * 기회주의적일 뿐이라 여기 없다고 해서 달라지는 건 없다 — 진짜 캐시는 클라이언트에 있다.
  * 콜드 스타트마다 비므로 상한만 걸어 두고 만료는 두지 않는다.
  */
@@ -72,6 +72,22 @@ const warmCache = new Map();
 const WARM_MAX = 500;
 
 /* ── 유틸 ─────────────────────────────────────────────── */
+
+/**
+ * warmCache 키. id만으로는 부족하다 — 매칭 결과를 좌우하는 이름·좌표가 전부
+ * 같은 요청 본문에서 오므로, 그것들이 다르면 다른 캐시 항목이어야 한다.
+ * 좌표는 소수 3자리(약 100m)로 뭉갠다. MAX_DISTANCE_M이 200m라 그 아래의
+ * 흔들림은 어차피 같은 결과로 수렴하고, 그대로 쓰면 부동소수 끝자리 때문에
+ * 캐시가 사실상 안 맞는다.
+ */
+function warmKey(query) {
+  return [
+    query.id,
+    query.name,
+    query.lat.toFixed(3),
+    query.lng.toFixed(3),
+  ].join('|');
+}
 
 /** 두 좌표 사이 거리(미터). */
 function distanceMeters(lat1, lng1, lat2, lng2) {
@@ -193,9 +209,32 @@ function clean(value) {
   return String(value == null ? '' : value).trim().slice(0, MAX_TEXT);
 }
 
+/**
+ * photoName 전용 상한. MAX_TEXT(100)를 쓰면 안 된다.
+ *
+ * 구글 사진 리소스 이름은 `places/{place_id}/photos/{photo_reference}` 꼴인데
+ * `places/`(7) + place_id(약 27) + `/photos/`(8)만 42자이고 photo_reference가 수백 자다.
+ * 100자로 자르면 사실상 매번 절단되고, 절단된 문자열도 validPhotoName()을 그대로
+ * 통과해 버려서 "성한 캐시"로 받아들여진다 — media 호출이 실패하고 재검색으로
+ * 떨어지므로, L1 히트가 한 건도 안 나면서 낭비된 왕복만 하나씩 늘었다.
+ * 아끼려고 만든 캐시가 Pro SKU를 오히려 한 번 더 쓰고 있었다.
+ */
+const MAX_PHOTO_NAME = 512;
+
 /** 'places/{id}/photos/{ref}' 모양인지 본다. 남의 문자열을 URL에 이어 붙이기 전에. */
 function validPhotoName(value) {
   return /^places\/[A-Za-z0-9_-]+\/photos\/[A-Za-z0-9_-]+$/.test(value);
+}
+
+/**
+ * photoName을 다듬는다. clean()을 태우지 않는다 — 위 MAX_PHOTO_NAME 주석 참조.
+ * 잘린 값을 통과시키느니 통째로 버리는 편이 낫다: 캐시 미스는 재검색으로 복구되지만,
+ * 잘린 캐시는 실패한 media 호출을 한 번 더 치르고 나서야 같은 자리로 온다.
+ */
+function cleanPhotoName(value) {
+  const text = String(value == null ? '' : value).trim();
+  if (text.length > MAX_PHOTO_NAME) return '';
+  return text;
 }
 
 /**
@@ -212,7 +251,7 @@ function toQuery(raw) {
   const id = clean(raw.id);
   if (!id) return null;
 
-  const photoName = clean(raw.photoName);
+  const photoName = cleanPhotoName(raw.photoName);
   const cached = validPhotoName(photoName) ? photoName : '';
 
   const name = clean(raw.name);
@@ -327,6 +366,49 @@ async function resolvePhotoUrl(photoName, key) {
   return (data && data.photoUri) || null;
 }
 
+/* ── 남용 방어 ────────────────────────────────────────── */
+
+/**
+ * 요청 1건이 구글 Text Search를 최대 MAX_PLACES(15)건 부르고, 그 등급이 Pro다
+ * (FIELD_MASK 주석 참조). sameOrigin은 Origin·Referer가 아예 없는 요청을 통과시키고
+ * warmCache는 같은 kakaoId 반복에만 들으므로, id·이름·좌표를 매번 바꾸면 상한이 없다.
+ *
+ * 이건 남용을 성가시게 만드는 층이지 최종 방어가 아니다. **최종 방어는 GCP 콘솔의
+ * 일일 할당량 상한과 API 제한이고, 그건 코드가 강제할 수 없다** — 키를 새로 발급할
+ * 때마다 대시보드에서 함께 확인해야 한다.
+ *
+ * 웜 인스턴스의 메모리에만 산다. 인스턴스가 여러 개면 각자 세므로 실효 상한은
+ * 인스턴스 수만큼 곱해진다. 그래도 무한과 유한의 차이가 크다.
+ */
+const RATE_WINDOW_MS = 60 * 1000;
+const RATE_MAX_REQUESTS = 20;
+const rateBuckets = new Map();
+
+/** 지난 창을 넘긴 기록을 걷는다. Map이 무한히 자라지 않게 한다. */
+function sweepRateBuckets(now) {
+  for (const [ip, hits] of rateBuckets) {
+    const live = hits.filter((at) => now - at < RATE_WINDOW_MS);
+    if (live.length === 0) rateBuckets.delete(ip);
+    else rateBuckets.set(ip, live);
+  }
+}
+
+/** @returns {boolean} 상한을 넘었으면 true. */
+function rateLimited(req) {
+  const forwarded = req.headers['x-forwarded-for'];
+  const ip = String(forwarded || '').split(',')[0].trim() || 'unknown';
+
+  const now = Date.now();
+  sweepRateBuckets(now);
+
+  const hits = (rateBuckets.get(ip) || []).filter((at) => now - at < RATE_WINDOW_MS);
+  if (hits.length >= RATE_MAX_REQUESTS) return true;
+
+  hits.push(now);
+  rateBuckets.set(ip, hits);
+  return false;
+}
+
 /* ── 핸들러 ───────────────────────────────────────────── */
 
 module.exports = async function handler(req, res) {
@@ -337,6 +419,11 @@ module.exports = async function handler(req, res) {
 
   if (!sameOrigin(req)) {
     return res.status(403).json({ code: 'FORBIDDEN' });
+  }
+
+  if (rateLimited(req)) {
+    res.setHeader('Retry-After', String(Math.ceil(RATE_WINDOW_MS / 1000)));
+    return res.status(429).json({ code: 'RATE_LIMITED' });
   }
 
   const key = process.env.GOOGLE_PLACES_KEY;
@@ -377,9 +464,16 @@ module.exports = async function handler(req, res) {
     if (!query.searchable) return null;
 
     // ② 웜 인스턴스가 이미 찾아 둔 게 있으면 재사용한다. 기회주의적일 뿐이다.
+    //
+    // 키가 id 하나면 안 된다. 매칭에 실제로 쓰이는 이름·좌표도 같은 요청 본문에서
+    // 오므로, 실제 카카오 id에 아무 이름·좌표나 붙여 한 번 보내면 그 결과가
+    // 인스턴스가 사는 동안 정상 사용자에게도 나간다 — found가 null이어도 저장하니
+    // "사진 없음"으로 고정시키는 것도 된다. 매칭 입력 전체를 키로 잡는다.
+    const cacheKey = warmKey(query);
+
     let found;
-    if (warmCache.has(query.id)) {
-      found = warmCache.get(query.id);
+    if (warmCache.has(cacheKey)) {
+      found = warmCache.get(cacheKey);
     } else {
       found = await findPhoto(query, key);
       if (warmCache.size >= WARM_MAX) {
@@ -387,7 +481,7 @@ module.exports = async function handler(req, res) {
         // (js/kakao-places.js의 coordCache와 같은 관용구).
         warmCache.delete(warmCache.keys().next().value);
       }
-      warmCache.set(query.id, found);
+      warmCache.set(cacheKey, found);
     }
     if (!found) return null;
 

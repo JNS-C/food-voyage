@@ -11,9 +11,21 @@
 <link rel="manifest" href="manifest.webmanifest">
 <!-- 모바일 브라우저 크롬을 상단 바와 같은 네이비로 물들인다 -->
 <meta name="theme-color" content="#0F1B2D">
+<link rel="canonical" href="https://food-voyage-puce.vercel.app/">
 <meta property="og:type" content="website">
+<meta property="og:url" content="https://food-voyage-puce.vercel.app/">
+<meta property="og:site_name" content="food-voyage">
+<meta property="og:locale" content="ko_KR">
 <meta property="og:title" content="food-voyage — 한 곳씩 개척하고 기록하는 미식 항해일지">
 <meta property="og:description" content="늘 가던 가게만 가는 게 답답할 때. 다녀온 곳을 항해일지처럼 남기고 아직 비어 있는 구역을 발견하세요.">
+<!-- 정사각 앱 아이콘을 그대로 쓴다. 1200x630 전용 이미지가 아직 없어서,
+     카카오톡·슬랙은 정사각으로 잘 보이지만 트위터 대형 카드에서는 여백이 생긴다.
+     og:image는 절대 URL이어야 한다 — 상대경로는 크롤러가 못 읽는다. -->
+<meta property="og:image" content="https://food-voyage-puce.vercel.app/icons/icon-512.png">
+<meta property="og:image:width" content="512">
+<meta property="og:image:height" content="512">
+<meta property="og:image:alt" content="food-voyage 앱 아이콘 — 밥그릇 선체에 돛을 단 배">
+<meta name="twitter:card" content="summary">
 
 <!-- 본문 서체. CDN 경로에 버전 태그를 반드시 붙인다 (DESIGN.md 서체 로딩) -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css">
@@ -194,6 +206,10 @@
     <p class="mt-4 text-caption text-ink-48">모든 항해자가 담아둔 곳을 모아 셌습니다.</p>
 
     <p id="top5-empty" class="mt-8 text-body text-ink-72" hidden>아직 담긴 가게가 없습니다.</p>
+    <!-- 빈 상태와 반드시 분리한다. 실패를 "아직 담긴 가게가 없습니다"로 보여주면
+         방문자가 첫 화면에서 '텅 빈 서비스'라는 사실과 다른 것을 배운다.
+         아래 #foryou-error와 같은 문법이다. -->
+    <p id="top5-error" class="mt-8 text-body text-ink-72" hidden>인기 맛집을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</p>
 
     <!-- 그리드 카드가 아니라 세로 목록 — 1위부터 5위까지가 위에서 아래로 한눈에 읽힌다 -->
     <ol id="top5-list" class="mt-8 grid max-w-[720px] grid-cols-1 gap-4"></ol>
@@ -214,7 +230,11 @@
     <!-- 담김 수는 ink-72다 — 14px 황동 텍스트는 흰 카드 위 4.05:1로 AA 미달.
          황동은 닻 아이콘이 갖는다(비텍스트 3:1 기준은 통과). -->
     <span class="flex shrink-0 items-center gap-1.5 text-ratio font-semibold text-ink-72">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#B86B32"
+      <!-- 색은 토큰으로 받는다(DESIGN Iteration Guide 3 — 인라인 hex 금지).
+           부모가 text-ink-72라 currentColor만으로는 숫자 색을 따라가므로
+           SVG에 text-accent를 직접 준다. -->
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+           class="text-accent" stroke="currentColor"
            stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <circle cx="12" cy="4.1" r="2.3"></circle>
         <path d="M12 6.4V21"></path>
@@ -298,7 +318,11 @@
 
     <!-- 스크롤러를 타일 밖으로 흘리지 않는다. 컨테이너 안에 두어야 위 섹션의
          카드 그리드와 좌측 시작선이 정확히 맞고, 카드가 잘려 보이지 않는다. -->
-    <div id="log-scroller"
+    <!-- tabindex="0" + role="region": 640px 미만에서는 #log-controls가 숨고
+         .no-scrollbar가 스크롤바까지 지워서, 넘길 수단이 스와이프뿐이었다 —
+         키보드도 마우스 드래그도 두 번째 일지 이후로 못 간다. 포커스 가능한
+         스크롤 컨테이너가 되면 화살표 키로 넘어간다. -->
+    <div id="log-scroller" tabindex="0" role="region" aria-label="최근 항해일지"
          class="no-scrollbar mt-8 flex snap-x snap-mandatory gap-6 overflow-x-auto"></div>
 
   </div>
@@ -339,10 +363,10 @@
         </a>
       </p>
       <!-- TODO: 프로젝트 허브 URL이 확정되면 위와 같은 <a>로 교체한다 -->
-      <p class="text-ink-48">프로젝트 허브 (연결 예정)</p>
+      <p class="text-ink-72">프로젝트 허브 (연결 예정)</p>
     </div>
 
-    <p class="mt-8 text-fine text-ink-48">
+    <p class="mt-8 text-fine text-ink-72">
       © 2026 food-voyage. 표시된 가게와 기록은 모두 가상의 예시입니다.
     </p>
 
@@ -364,6 +388,8 @@
      의미론이라 순서 의존 로딩과 섞이면 window.FvAuth가 없는 순간이 생긴다.
      버전은 고정한다 (PRD §8 지킬 것 5). 전역 이름은 window.supabase다. -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/dist/umd/supabase.js"
+        integrity="sha384-qafw21c/iciq0VXsi9FzkfoQv5I/V0iqE4lSNcKXPnW9/UTJLnv5CcN4FHxVLnKg"
+        crossorigin="anonymous"
         onerror="window.__supabaseSdkMissing = true"></script>
 <script src="js/auth.js"></script>
 <!-- 맞춤 추천이 카카오 검색을 쓴다. IIFE + window.KakaoPlaces 하나만 내보내므로

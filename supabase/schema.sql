@@ -20,7 +20,10 @@
 create table public.profiles (
   id         uuid primary key references auth.users(id) on delete cascade,
   nickname   text not null check (char_length(nickname) between 1 and 20),
-  home_area  text,
+  -- nickname 과 같은 이유로 상한을 둔다. 본인이 profiles_update_own 으로 임의
+  -- 길이를 쓸 수 있는 자리라 "동 이름"이라는 전제를 스키마가 직접 지킨다.
+  home_area  text constraint profiles_home_area_len
+             check (home_area is null or char_length(home_area) <= 40),
   created_at timestamptz not null default now()
 );
 
@@ -33,6 +36,10 @@ create table public.profiles (
 --   42501 permission denied for table profiles
 -- 로 막는다. 대시보드의 Policies 화면에는 정책 3개가 멀쩡히 보이기 때문에
 -- 원인이 정책 쪽이 아니라는 걸 알아채기 어렵다.
+-- anon 에게도 select GRANT 는 남긴다. 정책(profiles_select_own)이 이미 모든 행을
+-- 막아서 anon 이 받는 것은 항상 빈 배열이고, GRANT 를 걷으면 대신 42501 이 난다.
+-- .github/workflows/keep-alive.yml 이 anon 키로 이 테이블을 찔러 DB 를 깨우는데,
+-- 그게 200 이어야 워크플로가 실패하지 않는다.
 grant select on public.profiles to anon, authenticated;
 grant insert, update on public.profiles to authenticated;
 -- delete 는 주지 않는다. 대응하는 정책이 없고, 지울 일이 생기면 그때 정한다.
@@ -41,11 +48,24 @@ grant insert, update on public.profiles to authenticated;
 -- ── RLS ─────────────────────────────────────────────────
 alter table public.profiles enable row level security;
 
--- 읽기는 공개다. PRD §2 시나리오 ③(읽기 공개)에서 방문자가 남의 항해일지를 보고,
--- DESIGN 의 quote-log 가 작성자를 표기한다 — 로그아웃 상태에서도 닉네임이 읽혀야 한다.
-create policy "profiles_select_public"
+-- 읽기도 본인 행만이다 (8/28에 좁혔다).
+--
+-- 원래는 using (true) 공개였다. PRD §2 시나리오 ③(읽기 공개)에서 방문자가 남의
+-- 항해일지를 보고 DESIGN 의 quote-log 가 작성자를 표기하니, 로그아웃 상태에서도
+-- 닉네임이 읽혀야 한다는 선반영이었다. 그런데 그 화면이 아직 없고, 지금 profiles 를
+-- 읽는 코드는 js/auth.js 의 본인 조회 하나뿐이다.
+--
+-- 그 사이 anon 키는 config.js 로 공개되어 있으므로, 공개 읽기는
+--   /rest/v1/profiles?select=*
+-- 한 번에 전체 사용자 명부(uuid · 닉네임 · 생활권 · 가입시각)를 내주는 통로였다.
+-- home_area 가 동 단위라 uuid 와 묶이면 약한 위치 정보가 된다.
+--
+-- 항해일지가 붙을 때 다시 연다. 그때도 using (true) 로 되돌리지 말고 id · nickname
+-- 만 내보내는 뷰나 security definer 함수를 쓴다 — 필요한 건 작성자 표기이지
+-- 명부 전체가 아니다.
+create policy "profiles_select_own"
   on public.profiles for select
-  using (true);
+  using (auth.uid() = id);
 
 -- 쓰기는 본인 행만.
 create policy "profiles_insert_own"
@@ -82,7 +102,7 @@ create policy "profiles_update_own"
 --
 -- B 계정으로 로그인한 상태에서 DevTools 콘솔에:
 --
---   await FvAuth._client.from('profiles')
+--   await FvAuth.db.from('profiles')
 --     .update({ nickname: '침입' }).eq('id', '<A의 uuid>').select();
 --
 -- error 는 null 이고 data 가 빈 배열로 온다. RLS 의 UPDATE 거부는 에러가 아니라
@@ -96,7 +116,7 @@ create policy "profiles_update_own"
 --   select policyname, cmd from pg_policies
 --   where schemaname = 'public' and tablename = 'profiles';
 --
--- profiles_select_public(SELECT) · profiles_insert_own(INSERT) ·
+-- profiles_select_own(SELECT) · profiles_insert_own(INSERT) ·
 -- profiles_update_own(UPDATE) 세 줄이 나와야 한다. 한 줄이라도 없으면
 -- 가입은 되는데 프로필이 안 만들어지거나, 남의 행이 열린다.
 
@@ -139,8 +159,24 @@ create table public.saved_places (
   -- 같은 사람이 같은 가게를 두 번 담을 수 없다.
   -- 대리키를 두지 않는다 — (누가, 어느 가게)가 이 행의 정체 그 자체이고,
   -- 담기 취소가 정확히 이 키로 삭제하는 동작이다.
-  primary key (user_id, place_id)
+  primary key (user_id, place_id),
+
+  -- 네 텍스트 컬럼에 상한을 둔다. 이 값들은 담은 사람만 보는 게 아니라
+  -- get_top_places 를 거쳐 **비로그인 랜딩 첫 화면**으로 나간다. 가입은 열려
+  -- 있으므로 상한이 없으면 아무나 임의 길이 문자열을 랭킹 후보로 밀어 넣을 수 있다.
+  constraint saved_places_text_len check (
+    char_length(place_name) <= 100
+    and (category is null or char_length(category) <= 100)
+    and (address is null or char_length(address) <= 100)
+    and (neighborhood is null or char_length(neighborhood) <= 100)
+  )
 );
+
+-- place_id 단독 인덱스. PK 가 (user_id, place_id) 라 선행 컬럼이 user_id 이고,
+-- get_save_counts 의 where place_id = any(...) 는 그 인덱스를 못 쓴다 —
+-- 검색 페이지가 결과를 그릴 때마다 부르는 경로다(js/search.js).
+create index if not exists saved_places_place_id_idx
+  on public.saved_places (place_id);
 
 -- 카카오의 x·y를 lng·lat으로 바꿔 저장한다. x가 경도, y가 위도라 이름 그대로
 -- 두면 지도에 넣을 때 뒤집기 쉽다. 저장 시점에 한 번만 정리하고 그 뒤로는
@@ -158,8 +194,9 @@ grant select, insert, delete on public.saved_places to authenticated;
 -- ── RLS ─────────────────────────────────────────────────
 alter table public.saved_places enable row level security;
 
--- profiles와 달리 공개 읽기가 없다. 담기는 "가보고 싶은 곳" 위시리스트라
--- 사적인 성격이 맞다. 나중에 공개로 열려면 select 정책의 using만 바꾸면 된다.
+-- 공개 읽기가 없다. 담기는 "가보고 싶은 곳" 위시리스트라 사적인 성격이 맞다.
+-- (profiles도 8/28에 같은 모양이 됐다 — 위 profiles_select_own 참조.)
+-- 전체 집계가 필요한 랭킹은 정책을 푸는 대신 security definer RPC가 맡는다.
 create policy "saved_places_select_own"
   on public.saved_places for select
   using (auth.uid() = user_id);
@@ -246,6 +283,10 @@ as $$
     count(*)                                       as save_count
   from public.saved_places sp
   group by sp.place_id
+  -- 랭킹 진입 하한. 가입이 열려 있으므로 하한이 없으면 계정 하나가 임의의
+  -- place_name을 담기만 해도 랜딩 첫 화면의 랭킹 후보가 된다. 시드 기준
+  -- TOP5가 10·9·8·7·6이라 이 하한은 보이는 결과를 바꾸지 않는다.
+  having count(*) >= 3
   -- 동률 처리: 담긴 횟수 → 더 최근에 담긴 가게 → place_id.
   -- 마지막 place_id는 새로고침마다 순서가 흔들리지 않게 하는 고정 축이다.
   order by count(*) desc, max(sp.created_at) desc, sp.place_id

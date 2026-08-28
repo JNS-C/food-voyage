@@ -55,8 +55,8 @@ npx vercel dev --listen 8000
 
 **켜면 Redirect URLs를 등록해야 한다.** 인증 링크는 `login.html?confirmed=1`로 돌아온다 (`js/auth.js`의 `emailRedirectTo`가 `location.origin`을 쓴다).
 
-- **Authentication → URL Configuration → Redirect URLs**에 `http://localhost:8000/**`와 배포 URL(`https://<프로젝트>.vercel.app/**`)을 넣는다.
-- Site URL은 배포 URL로 맞춘다. 허용목록에 없는 주소로 돌아오면 전부 여기로 떨어진다.
+- **Authentication → URL Configuration → Redirect URLs**에 `http://localhost:8000/**`와 `https://food-voyage-puce.vercel.app/**`를 넣는다.
+- Site URL은 `https://food-voyage-puce.vercel.app`로 맞춘다. 허용목록에 없는 주소로 돌아오면 전부 여기로 떨어진다.
 
 등록을 빠뜨리면 인증 링크를 눌러도 엉뚱한 곳으로 가고, 화면에는 "인증 링크가 만료되었거나 이미 사용되었습니다"만 뜬다. 원인이 안 보이는 실패라 먼저 확인할 것.
 
@@ -118,24 +118,34 @@ Supabase는 이 둘을 서로 다른 사용자로 보고, 메일은 한 받은�
 index.html    랜딩 (5개 섹션)
 search.html   맛집 찾기 (카카오 로컬)
 login.html    로그인 · 회원가입
+mypage.html   담은 곳
 config.js     브라우저에 노출되는 공개 키들
 styles.css    Liquid Glass 공유 스타일
 tw-config.js  Tailwind 디자인 토큰
 script.js     랜딩 컨트롤러
 mock-data.js  가짜 데이터 (mock 접두사)
+vercel.json   보안 헤더. CSP는 아직 Report-Only다
+manifest.webmanifest · favicon.svg · icons/   PWA·브랜드 마크
 js/
-  auth.js            window.FvAuth — Supabase 인증, 세 페이지 공유
+  auth.js            window.FvAuth — Supabase 인증, 네 페이지 공유
   kakao-places.js    window.KakaoPlaces
   region-combobox.js window.RegionCombobox
   saved-places.js    window.FvSaved — 검색 결과 담기, search.html 전용
   place-photos.js    window.FvPhotos — 카드 썸네일 구글 사진, search.html 전용
+  search-map.js      window.FvSearchMap — 결과 지도, search.html 전용
   search.js          검색 페이지 컨트롤러
   login.js           로그인 페이지 컨트롤러
+  mypage.js          담은 곳 페이지 컨트롤러
 api/
   place-photo.js  구글 Places 사진 조회. 키를 숨기는 것이 존재 이유다
 supabase/
   schema.sql    profiles·saved_places 테이블 + RLS. 대시보드에 붙여넣는다
+  seed.sql      더미 사용자 10명 · 가상 가게 30곳. 비밀번호는 실행 시점에 넘긴다
+.github/workflows/
+  keep-alive.yml  3일마다 Supabase를 깨운다
 ```
+
+`window.FvAuth.db`가 이 앱의 유일한 Supabase 클라이언트다. 두 번째를 만들면 세션이 갈린다.
 
 `js/`의 파일들은 IIFE 안에 갇혀 있고 `window.X` 하나만 내보낸다. `script.js`와 `js/search.js`는 top-level 이름을 쓰므로 **한 페이지에 같이 올리면 안 된다**.
 

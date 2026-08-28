@@ -27,6 +27,9 @@
   /** 지역 입력 길이 상한. 검색어이지 문서가 아니다. */
   const REGION_MAX = 40;
 
+  /** supabase/schema.sql이 소유하는 이름. 리터럴로 흩어 두지 않는다. */
+  const RPC_SAVE_COUNTS = 'get_save_counts';
+
   /** 코드형 카테고리는 category_group_code로 보낸다. 나머지는 키워드에 합친다. */
   const CODE_CATEGORY = /^(FD6|CE7)$/;
 
@@ -268,8 +271,8 @@
     if (places.length === 0 || !window.FvAuth || !window.FvAuth.isConfigured()) {
       return Promise.resolve(true);
     }
-    return window.FvAuth._client
-      .rpc('get_save_counts', { place_ids: places.map((place) => String(place.id)) })
+    return window.FvAuth.db
+      .rpc(RPC_SAVE_COUNTS, { place_ids: places.map((place) => String(place.id)) })
       .then(({ data, error }) => {
         if (error) throw error;
         const counts = new Map((data || []).map((row) => [String(row.place_id), Number(row.save_count) || 0]));
@@ -344,10 +347,6 @@
 
   /* ── 지도 연동 ──────────────────────────────────────── */
 
-  function isWide() {
-    return window.matchMedia('(min-width: 1024px)').matches;
-  }
-
   function mapOpen() {
     const panel = byId('map-panel');
     return !!panel && panel.dataset.open === 'true';
@@ -395,9 +394,24 @@
       toggle.setAttribute('aria-pressed', open ? 'true' : 'false');
       toggle.textContent = open ? '목록으로' : '지도로 보기';
     }
+
+    // 모바일에서는 전체 화면을 덮으므로 뒤에 깔린 목록을 보조기술과 탭 순서에서
+    // 뺀다. lg에서는 오버레이가 아니라 옆에 나란히 있는 지도라 그대로 둔다.
+    // (CSS가 #map-toggle을 숨기는 구간이므로 이 경로 자체가 lg에서는 안 돈다.)
+    const list = byId('list-col');
+    if (list) {
+      if (open) list.setAttribute('inert', '');
+      else list.removeAttribute('inert');
+    }
+
     if (open) {
       if (!fromPop) history.pushState({ fvMapOpen: true }, '', window.location.href);
       if (window.FvSearchMap) window.FvSearchMap.relayout();
+      panel.focus();
+    } else if (toggle && !toggle.hidden) {
+      // 닫을 때는 열었던 버튼으로 돌려준다. 안 그러면 포커스가 inert였던 영역
+      // 근처에서 body로 떨어진다.
+      toggle.focus();
     }
   }
 
@@ -405,8 +419,29 @@
     const toggle = byId('map-toggle');
     if (toggle) toggle.addEventListener('click', () => setMapOpen(!mapOpen()));
 
+    // 전체 화면을 덮는 오버레이에는 키보드 탈출구가 있어야 한다. 안드로이드
+    // 뒤로가기는 히스토리로 처리했는데 Esc만 빠져 있었다. 닫기는 setMapOpen이
+    // history.back()으로 넘기므로 아래 popstate와 같은 통로를 탄다.
+    document.addEventListener('keydown', (event) => {
+      if (event.key !== 'Escape' || !mapOpen()) return;
+      event.preventDefault();
+      setMapOpen(false);
+    });
+
     window.addEventListener('popstate', () => {
-      if (mapOpen()) setMapOpen(false, { fromPop: true });
+      if (!mapOpen()) return;
+      setMapOpen(false, { fromPop: true });
+
+      // back()이 되돌린 URL을 지금 화면의 검색으로 다시 맞춘다.
+      //
+      // 지도 위에서도 필터 바를 조작할 수 있다(styles.css의 오버레이 z-index 참조).
+      // 그렇게 재검색하면 syncUrl이 replaceState로 **지금 칸**의 URL만 갱신하는데,
+      // 닫기는 back()으로 그 칸을 걷어내므로 한 칸 전의 옛 쿼리가 주소창에 남는다.
+      // 화면은 새 결과인데 URL은 옛 검색을 가리키고, 그대로 새로고침·공유하면
+      // 다른 결과가 나온다. 여기서 되맞추는 게 가장 좁은 수정이다.
+      if (!lastSearchedRegion) return;
+      const input = byId('keyword-input');
+      syncUrl(lastSearchedRegion, input ? input.value.trim() : '', activeCategory());
     });
   }
 

@@ -25,7 +25,19 @@
 --   · confirmation_token 등 4개 토큰 컬럼은 null이 아니라 빈 문자열이어야 한다.
 --     null이면 로그인 시 "converting NULL to string" 스캔 에러가 난다.
 --   · email_confirmed_at 을 채우면 Confirm email 설정과 무관하게 바로 로그인된다.
--- 비밀번호는 전원 voyage-seed-1234 — 검증할 때 이 계정으로 로그인해 본다.
+--
+-- ── 비밀번호를 이 파일에 적지 않는다 ───────────────────
+-- 이 저장소는 public이다. 여기 평문을 적으면 그 순간 계정 10개가 공개 자격증명이
+-- 되고, 로그인한 사람은 RLS 안에서 **정당하게** 자기 saved_places를 지울 수 있다.
+-- 그 행들이 곧 랜딩 TOP5(get_top_places)의 원본이라 첫 화면이 통째로 비워진다.
+-- RLS로는 막을 수 없다 — 자격증명 유출이지 권한 구멍이 아니기 때문이다.
+--
+-- 실행할 때 :seed_password 를 그 자리에서 넘긴다.
+--   psql  : psql "$DATABASE_URL" -v seed_password="$(openssl rand -base64 24)" -f seed.sql
+--   SQL Editor: 아래 \set 줄의 주석을 풀고 값을 직접 채운 뒤 실행하고, **저장하지 않는다.**
+-- 검증용으로 한 계정에 로그인해야 하면 그때 쓴 값을 로컬에만 남긴다.
+--
+-- \set seed_password '여기에-임시-비밀번호'
 insert into auth.users (
   instance_id, id, aud, role, email,
   encrypted_password, email_confirmed_at,
@@ -38,7 +50,7 @@ select
   ('00000000-0000-4000-a000-0000000000' || lpad(n::text, 2, '0'))::uuid,
   'authenticated', 'authenticated',
   format('seed%s@seed.food-voyage.local', lpad(n::text, 2, '0')),
-  extensions.crypt('voyage-seed-1234', extensions.gen_salt('bf')),
+  extensions.crypt(:'seed_password', extensions.gen_salt('bf')),
   now(),
   '{"provider":"email","providers":["email"]}'::jsonb,
   jsonb_build_object(

@@ -160,7 +160,7 @@
    * @param {string} config.statusId   sr-only 라이브 리전. 절대 hidden이 되면 안 된다.
    * @param {string} config.templateId <template>. 행 마크업은 design 소유다.
    * @param {function} config.onCommit 사용자가 후보를 고르면 호출. hit 하나를 받는다.
-   * @returns {{close: function, destroy: function, remember: function}|null}
+   * @returns {{close: function, remember: function}|null}
    *          필수 노드가 없으면 null. 호출자는 그걸 '아직 마크업이 없다'로 읽어야지
    *          오류로 다루면 안 된다.
    */
@@ -357,9 +357,16 @@
       if (!open) bindViewport(true);
       open = true;
       box.hidden = false;
-      // 항목이 있을 때만 펼쳐진 것으로 알린다. 고를 게 없는데 expanded를 켜면
-      // 스크린리더가 빈 목록으로 안내한다.
-      field.setAttribute('aria-expanded', has ? 'true' : 'false');
+
+      // aria-expanded는 box.hidden과 항상 같이 간다. APG는 "팝업이 표시되면
+      // 반드시 true"라고 못 박는다.
+      //
+      // 예전에는 항목이 있을 때만 true였다 — 고를 게 없는데 켜면 스크린리더가
+      // 빈 목록으로 안내한다는 이유였는데, 그러면 패널이 화면을 덮고 있는데도
+      // 접힌 것으로 읽히는 불일치가 생긴다. 그리고 그 걱정은 이미
+      // aria-live가 "결과가 없습니다"로 해결하고 있다 — 두 번 방어하면서
+      // 규격을 깨고 있었다.
+      field.setAttribute('aria-expanded', 'true');
       positionPanel();
       setActive(-1);
     }
@@ -565,10 +572,29 @@
           }
           break;
 
-        case 'Tab':
+        case 'Tab': {
+          if (!open) break;
+
+          // 패널 안의 "최근 검색 전체 지우기"는 포커스 가능한 버튼인데, 여기서
+          // 무조건 닫으면 패널이 display:none이 되어 키보드로는 닿을 방법이
+          // 아예 없었다(WCAG 2.1.1). 마우스 전용 기능이었다.
+          //
+          // 그냥 닫지 않고 넘기는 것만으로는 부족하다 — #region-panel은 문서 끝에
+          // 있고 화면 위치만 JS가 계산해 얹으므로, 순차 Tab으로는 페이지를 거의
+          // 다 지나야 닿는다. 보이는 순서와 맞도록 포커스를 직접 옮긴다.
+          // 여기서 나가는 Tab은 onBlur가 받아 패널을 닫는다.
+          const box = panel();
+          const clearBtn = box && box.querySelector('[data-region-clear]');
+          if (clearBtn && !clearBtn.hidden && !event.shiftKey && activeIndex < 0) {
+            event.preventDefault();
+            clearBtn.focus();
+            break;
+          }
+
           // 확정하지 않고 닫는다. 탐색은 선택이 아니다.
-          if (open) close();
+          close();
           break;
+        }
 
         default:
           break;
@@ -656,22 +682,6 @@
 
       /** 타이핑한 채로 검색이 성공했을 때 호출자가 최근 검색에 남긴다. */
       remember: rememberRecent,
-
-      destroy() {
-        window.clearTimeout(debounceTimer);
-        bindViewport(false);
-        field.removeEventListener('input', onInput);
-        field.removeEventListener('compositionstart', onCompositionStart);
-        field.removeEventListener('compositionend', onCompositionEnd);
-        field.removeEventListener('keydown', onKeyDown);
-        field.removeEventListener('focus', onFocus);
-        field.removeEventListener('blur', onBlur);
-        list.removeEventListener('pointerdown', onListPointerDown);
-        list.removeEventListener('click', onListClick);
-        box.removeEventListener('click', onPanelClick);
-        document.removeEventListener('pointerdown', onDocumentPointerDown);
-        close();
-      },
     };
   }
 

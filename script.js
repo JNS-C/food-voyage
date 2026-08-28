@@ -18,6 +18,15 @@ const SVG_NS = 'http://www.w3.org/2000/svg';
  * showToast만 남았다 — js/auth.js가 window.showToast로 부른다.
  */
 
+/* ── 스키마 이름 ────────────────────────────────────── */
+
+/**
+ * supabase/schema.sql이 소유하는 이름들. 리터럴로 흩어 두면 스키마가 바뀔 때
+ * 파일 다섯 개를 뒤져야 한다(js/saved-places.js·js/mypage.js에도 같은 상수가 있다).
+ */
+const SAVED_PLACES = 'saved_places';
+const RPC_TOP_PLACES = 'get_top_places';
+
 /* ── 유틸 ───────────────────────────────────────────── */
 
 /** '2026-08-12' → '8월 12일' */
@@ -71,18 +80,25 @@ function renderAnchorSingle(willRevisit) {
 async function renderTop5() {
   const list = document.getElementById('top5-list');
   const empty = document.getElementById('top5-empty');
+  const failed = document.getElementById('top5-error');
   if (!list || !empty) return;
 
-  // Supabase 설정이 비어 있어도 랜딩은 죽지 않는다. 빈 상태 문구로만 내려간다.
+  /** 실패는 빈 상태로 흘리지 않는다 — 아래 setForYouState와 같은 태도다. */
+  const showError = () => {
+    if (failed) failed.hidden = false;
+    else empty.hidden = false;   // 옛 마크업 폴백
+  };
+
+  // Supabase 설정이 비어 있는 것은 "담긴 가게가 없다"가 아니라 설정 문제다.
   if (!window.FvAuth || !window.FvAuth.isConfigured()) {
-    empty.hidden = false;
+    showError();
     return;
   }
 
-  const { data, error } = await window.FvAuth._client.rpc('get_top_places', { limit_count: 5 });
+  const { data, error } = await window.FvAuth.db.rpc(RPC_TOP_PLACES, { limit_count: 5 });
   if (error) {
     console.warn('[top5]', error.message);
-    empty.hidden = false;
+    showError();
     return;
   }
 
@@ -151,8 +167,8 @@ async function loadForYou(snap) {
   grid.textContent = '';
 
   // 내 saves만 필요하다. user_id 필터는 안 건다 — RLS가 거른다 (mypage.js와 같은 태도).
-  const { data: saves, error } = await window.FvAuth._client
-    .from('saved_places')
+  const { data: saves, error } = await window.FvAuth.db
+    .from(SAVED_PLACES)
     .select('place_id, category, neighborhood');
   if (seq !== forYouSeq) return;
   if (error) {

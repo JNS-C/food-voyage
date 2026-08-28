@@ -74,7 +74,11 @@
      tertiary는 새 색을 만들지 않고 on-dark의 투명도를 낮춰 파생시킨다. */
   --lg-label:     #F4EFE6;
   --lg-label-2:   #B9B2A6;
-  --lg-label-3:   rgba(244, 239, 230, 0.68);
+  /* 0.68이 아니라 0.82다. 이 토큰은 .lg-inner::placeholder 한 곳에만 쓰이는데,
+     필터 바가 640px 이상에서 sticky로 크림 콘텐츠 위에 얹히면 유리 뒤 배경이
+     밝아져 0.68로는 3.37:1까지 떨어졌다(1.4.3 미달). 0.82면 크림 위 4.61:1,
+     모바일 네이비 타일 안에서는 6.9:1이다. */
+  --lg-label-3:   rgba(244, 239, 230, 0.82);
   --lg-separator: rgba(244, 239, 230, 0.16);
 
   /* ── 틴트 = prominence 신호 (§6.2) ──
@@ -625,8 +629,11 @@ a, button, input, [role="button"] {
   #map-col { display: contents; }
 
   #map-panel { display: none; }
-  /* 전체 화면 오버레이. z-20 — 필터 바(30)·상단 바(30) 아래라
-     지도 위에서도 검색·칩을 그대로 조작할 수 있다. */
+  /* 전체 화면 오버레이. z-20 — 상단 바(30) 아래다.
+     필터 바는 640px 이상에서만 sticky·z-30이라(위 min-width:640px 블록) 그 구간에서만
+     오버레이 위로 올라온다. 즉 640~1023px에서는 지도 위에서도 검색·칩을 조작할 수 있고,
+     640px 미만에서는 필터 바가 static이라 오버레이에 덮인다. 이 차이가 히스토리
+     처리에 영향을 준다 — js/search.js의 popstate 주석을 함께 볼 것. */
   #map-panel[data-open="true"] {
     display: block;
     position: fixed;
@@ -678,7 +685,12 @@ a, button, input, [role="button"] {
 
 #map-toggle:focus-visible {
   outline: 2px solid #E0A85C;     /* accent-on-dark — 어두운 면 위의 링 */
-  outline-offset: 2px;
+  /* 안쪽에 그린다. offset이 양수면 링이 pill 바깥에 놓이는데, 이 pill은 fixed로
+     크림 페이지 위에 떠 있어서 링에 닿는 색이 네이비가 아니라 크림이 된다 —
+     #E0A85C 대 #F4EFE6은 1.85:1이라 1.4.11(3:1)에 못 미친다. 안쪽이면 네이비를
+     배경으로 잡아 8.18:1이다. .region-clear:focus-visible이 같은 이유로
+     -2px를 쓴다. */
+  outline-offset: -3px;
 }
 
 @media (min-width: 1024px) {
@@ -751,7 +763,9 @@ a, button, input, [role="button"] {
 .map-popover-link {
   display: inline-flex;
   align-items: center;
-  min-height: 36px;
+  /* 36px이었다. 지도 위 팝오버는 손가락으로만 쓰는 자리라 여기서 규율을
+     깎을 이유가 가장 적다. --lg-target을 그대로 쓴다. */
+  min-height: var(--lg-target);
   margin-top: 6px;
   font-size: 14px;
   letter-spacing: -0.1px;
@@ -779,6 +793,26 @@ a, button, input, [role="button"] {
   letter-spacing: -0.1px;
   color: #6B6459;
   cursor: pointer;
+}
+
+/* 요청이 도는 동안의 담기 버튼. disabled 대신 aria-disabled를 쓴다 —
+   포커스를 잃지 않기 위해서다(js/saved-places.js의 toggle 주석 참조).
+   Tailwind의 aria-disabled: 변형에 기대지 않는다. CDN 버전에 따라 없을 수 있고,
+   이 저장소는 CDN이 head 끝에 주입하는 순서 문제를 이미 여러 번 겪었다. */
+[data-save][aria-disabled="true"],
+#auth-submit[aria-disabled="true"] {
+  opacity: 0.6;
+}
+
+/* 거점 칩 안의 두 버튼. .lg-inner:focus-visible은 부모 pill(#anchor-pill)에 걸린
+   규칙이라 안쪽 버튼에는 닿지 않아서, 여기만 브라우저 기본 링이 나왔다 —
+   나머지 전 컨트롤과 다르게 보이고 유리 위 기본 링은 대비 보장이 없다.
+   유리 위이므로 --lg-focus(네이비 면 전용)를 그대로 쓰고 안쪽에 그린다. */
+#anchor-pill [data-anchor-edit]:focus-visible,
+#anchor-pill [data-anchor-clear]:focus-visible {
+  outline: 2px solid var(--lg-focus);
+  outline-offset: -2px;
+  border-radius: var(--lg-r-control);
 }
 
 .region-clear:focus-visible {

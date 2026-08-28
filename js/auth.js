@@ -34,6 +34,9 @@
 
   let sb = null;
   let readyPromise = null;
+
+  /** 인증 이벤트 순번. 늦게 끝난 프로필 조회가 새 사용자를 덮어쓰는 걸 막는다. */
+  let authSeq = 0;
   const listeners = new Set();
   const state = { session: null, profile: null, resolved: false };
 
@@ -180,9 +183,20 @@
         return;
       }
 
-      const { data } = await c.auth.getSession();
-      state.session = (data && data.session) || null;
-      state.profile = await loadProfile(state.session);
+      try {
+        const { data } = await c.auth.getSession();
+        state.session = (data && data.session) || null;
+        state.profile = await loadProfile(state.session);
+      } catch (error) {
+        // 여기서 던지면 readyPromise가 **rejected로 캐시되어** 이후 모든 ready()가
+        // 같은 거부를 돌려준다. 소비처(js/mypage.js·js/login.js)는 await만 하므로
+        // 마이페이지가 state-loading에 영구히 갇힌다 — state-error로도 못 간다.
+        // 세션을 못 읽은 것은 "로그아웃 상태"로 다루고 화면은 계속 진행시킨다.
+        console.warn('[auth] 세션 복원 실패', error);
+        state.session = null;
+        state.profile = null;
+      }
+
       state.resolved = true;
       emit();
 
@@ -190,8 +204,25 @@
         const next = session || null;
         const changedUser = userId(state.session) !== userId(next);
         state.session = next;
+
+        // 이 저장소가 다른 네 곳에서 지키는 요청 토큰 규율을 여기서도 지킨다
+        // (js/search.js의 requestToken · region-combobox의 suggestToken ·
+        //  place-photos의 renderToken · script.js의 forYouSeq).
+        // 인증 이벤트가 연달아 오면 늦게 끝난 loadProfile이 새 사용자의 프로필을
+        // 덮어쓸 수 있다 — 계정을 오가며 시연할 때 닉네임이 잠깐 남의 것이 된다.
+        const seq = (authSeq += 1);
+
         // TOKEN_REFRESHED는 같은 사람이다. 프로필을 다시 읽을 이유가 없다.
-        if (changedUser) state.profile = await loadProfile(next);
+        if (changedUser) {
+          let profile = null;
+          try {
+            profile = await loadProfile(next);
+          } catch (error) {
+            console.warn('[auth] 프로필 조회 실패', error);
+          }
+          if (seq !== authSeq) return;
+          state.profile = profile;
+        }
         emit();
       });
     })();
@@ -417,19 +448,30 @@
     isConfigured,
     ready,
     onChange,
-    mountNav,
     getSession: () => state.session,
-    getProfile: () => state.profile,
     signUp,
     signIn,
     signOut,
     resendConfirmation,
 
-    // 내부용. RLS 검증(콘솔에서 직접 쿼리)과 8/25 데이터 작업에서 쓴다.
-    get _client() {
+    /**
+     * Supabase 클라이언트. 이 앱의 **모든 DB 접근이 여기를 지난다** —
+     * js/saved-places.js · js/mypage.js · js/search.js · script.js.
+     *
+     * 8/28 이전에는 이름이 _client 였고 "내부용"이라 적혀 있었는데, 밑줄은
+     * "기대지 마라"는 신호인 반면 실제로는 네 파일이 상시 의존하는 주요 경로였다.
+     * 리팩터 중에 그 주석을 믿고 바꾸면 네 파일이 조용히 깨진다. 이름을 실제
+     * 역할에 맞춘다.
+     *
+     * 세션이 없거나 config.js가 안 실리면 null이다. 호출부가 확인해야 한다.
+     */
+    get db() {
       return client();
     },
   };
+
+  // mountNav는 내보내지 않는다 — 아래 자동 마운트가 유일한 호출자다.
+  // getProfile도 없다. 소비자들은 onChange의 snap.profile을 쓴다.
 
   /* ── 자동 마운트 ────────────────────────────────────── */
 

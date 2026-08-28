@@ -35,9 +35,13 @@ jobs:
             -H "Authorization: Bearer ${SUPABASE_ANON_KEY}")
 
           echo "HTTP ${status}"
-          cat /tmp/keep-alive-body.txt
 
           if [ "${status}" != "200" ]; then
+            # 본문은 실패했을 때만 찍는다. 성공 응답에는 실제 사용자 uuid 가 실리는데
+            # 이 저장소는 public 이라 Actions 로그도 공개다.
+            # (8/28에 profiles 읽기를 본인 행으로 좁혀 지금은 빈 배열이 오지만,
+            #  로그에 본문을 흘리는 습관 자체를 두지 않는다.)
+            cat /tmp/keep-alive-body.txt
             echo "::error::Supabase 응답이 200 이 아니다 (HTTP ${status})."
             exit 1
           fi
