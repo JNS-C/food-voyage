@@ -194,13 +194,20 @@
     const place = index.get(id);
     if (!sb || !place) return;
 
+    // 요청이 도는 동안 다시 눌린 것은 무시한다. disabled를 쓰지 않는 이유가 있다 —
+    // 포커스된 요소가 disabled가 되면 브라우저가 포커스를 body로 옮기고 다시
+    // 살려도 되돌려주지 않는다. 키보드로 담으면 그 자리에서 포커스를 잃어서,
+    // 결과 15건 중 3곳을 담으려면 헤더·폼·칩을 지나 Tab을 처음부터 세 번 반복해야 했다.
+    // aria-disabled는 상태를 낭독시키면서 포커스를 그대로 둔다.
+    if (btn.getAttribute('aria-disabled') === 'true') return;
+
     const wasOn = saved.has(id);
 
     // 낙관적으로 먼저 뒤집는다. 네트워크를 기다리는 동안 버튼이 죽어 보이면 안 된다.
     if (wasOn) saved.delete(id);
     else saved.add(id);
     paintCard(card);
-    btn.disabled = true;
+    btn.setAttribute('aria-disabled', 'true');
 
     // upsert를 쓰지 않는다. supabase-js의 upsert는 ON CONFLICT DO UPDATE로
     // 번역돼 UPDATE 권한을 요구하는데, 이 테이블에는 일부러 안 줬다 —
@@ -210,7 +217,7 @@
       ? await sb.from(TABLE).delete().eq('user_id', uid).eq('place_id', id)
       : await sb.from(TABLE).insert(toRow(place));
 
-    btn.disabled = false;
+    btn.removeAttribute('aria-disabled');
 
     if (error && error.code === '23505') {
       // 이미 담겨 있었다. 화면은 이미 담김이므로 아무것도 되돌리지 않는다.

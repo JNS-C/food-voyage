@@ -395,15 +395,39 @@
       toggle.setAttribute('aria-pressed', open ? 'true' : 'false');
       toggle.textContent = open ? '목록으로' : '지도로 보기';
     }
+
+    // 모바일에서는 전체 화면을 덮으므로 뒤에 깔린 목록을 보조기술과 탭 순서에서
+    // 뺀다. lg에서는 오버레이가 아니라 옆에 나란히 있는 지도라 그대로 둔다.
+    // (CSS가 #map-toggle을 숨기는 구간이므로 이 경로 자체가 lg에서는 안 돈다.)
+    const list = byId('list-col');
+    if (list) {
+      if (open) list.setAttribute('inert', '');
+      else list.removeAttribute('inert');
+    }
+
     if (open) {
       if (!fromPop) history.pushState({ fvMapOpen: true }, '', window.location.href);
       if (window.FvSearchMap) window.FvSearchMap.relayout();
+      panel.focus();
+    } else if (toggle && !toggle.hidden) {
+      // 닫을 때는 열었던 버튼으로 돌려준다. 안 그러면 포커스가 inert였던 영역
+      // 근처에서 body로 떨어진다.
+      toggle.focus();
     }
   }
 
   function bindMapToggle() {
     const toggle = byId('map-toggle');
     if (toggle) toggle.addEventListener('click', () => setMapOpen(!mapOpen()));
+
+    // 전체 화면을 덮는 오버레이에는 키보드 탈출구가 있어야 한다. 안드로이드
+    // 뒤로가기는 히스토리로 처리했는데 Esc만 빠져 있었다. 닫기는 setMapOpen이
+    // history.back()으로 넘기므로 아래 popstate와 같은 통로를 탄다.
+    document.addEventListener('keydown', (event) => {
+      if (event.key !== 'Escape' || !mapOpen()) return;
+      event.preventDefault();
+      setMapOpen(false);
+    });
 
     window.addEventListener('popstate', () => {
       if (!mapOpen()) return;

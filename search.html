@@ -52,6 +52,14 @@
 -->
 <body class="bg-cream font-sans text-body text-ink antialiased">
 
+<!-- 결과까지 Tab 16회(브랜드 1 + 헤더 3 + 폼 4 + 카테고리 칩 7)가 걸리고, 재검색할
+     때마다 처음부터 반복된다. #main이 아니라 #result-grid로 보낸다 — 이 페이지에서
+     건너뛰고 싶은 것은 헤더가 아니라 필터 바 전체다. -->
+<a href="#result-grid"
+   class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-full focus:bg-accent focus:px-5 focus:py-3 focus:text-btn focus:text-white">
+  검색 결과로 건너뛰기
+</a>
+
 <!-- ── 상단 유리 바 (기능 레이어) ───────────────────────
      아래로 결과 그리드가 통째로 지나간다 — 유리 뒤에 실제 콘텐츠가 있다(§11.8).
      body 직속이라 조상 체인에 transform이 없다(§11.7-1). -->
@@ -142,7 +150,7 @@
           <button type="button" data-anchor-edit
                   class="min-w-0 flex-1 truncate px-3 text-left text-body"></button>
           <button type="button" data-anchor-clear aria-label="거점 해제"
-                  class="flex h-9 w-10 shrink-0 items-center justify-center text-body">×</button>
+                  class="flex h-11 w-11 shrink-0 items-center justify-center text-body">×</button>
         </div>
 
         <!-- 내 주변: geolocation으로 현재 위치 반경 검색. type="button"이라
@@ -254,7 +262,9 @@
   </div>
 
   <!-- 리스트형 행 카드 세로 목록. id는 FvSaved.mount 계약이라 유지한다. -->
-  <div id="result-grid" aria-busy="false" class="mt-6 flex flex-col gap-3"></div>
+  <!-- tabindex="-1": 스킵 링크가 여기로 보낸다. div는 기본적으로 포커스를 못 받아
+       링크를 눌러도 포커스가 body에 남는다. -->
+  <div id="result-grid" tabindex="-1" aria-busy="false" class="mt-6 flex flex-col gap-3"></div>
 
 </div><!-- /#list-col -->
 
@@ -267,7 +277,11 @@
         전환 실체는 styles.css의 #map-panel/#map-col이 갖는다.
      지도는 콘텐츠 레이어라 유리를 쓰지 않는다(§2.1). -->
 <div id="map-col">
-  <div id="map-panel" data-open="false">
+  <!-- tabindex="-1": 모바일 오버레이로 열릴 때 search.js가 여기로 포커스를 옮긴다.
+       Esc·뒤로가기로 닫으면 #map-toggle로 돌려준다. role은 두지 않는다 —
+       lg에서는 같은 노드가 오버레이가 아니라 나란히 놓인 지도라, 상시 dialog로
+       읽히면 그쪽이 더 틀린다. -->
+  <div id="map-panel" data-open="false" tabindex="-1" aria-label="지도">
     <div id="map-canvas"></div>
     <!-- 지도 위 결과 요약 미러. logic이 textContent만 넣는다 -->
     <p id="map-summary" hidden></p>
@@ -349,7 +363,7 @@
          ⚠️ 카드 루트가 role="button"인데 안에 버튼이 또 있다 — 중첩 인터랙티브.
             리뷰 상세가 생기면 카드 role을 내리고 제목을 링크로 바꾸는 게 맞다. -->
     <button type="button" data-save data-save-icon aria-pressed="false"
-            class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-accent transition duration-200 disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-focus">
+            class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-accent transition duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-focus">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
            stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <circle cx="12" cy="4.1" r="2.3"></circle>

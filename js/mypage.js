@@ -156,20 +156,43 @@
       const btn = event.target.closest('[data-remove]');
       if (!btn || !grid.contains(btn)) return;
       const card = btn.closest('[data-place-id]');
-      if (card) removeRow(card, btn);
+      if (card) removeRow(card);
     });
   }
 
-  async function removeRow(card, btn) {
+  async function removeRow(card) {
     const sb = window.FvAuth._client;
     const session = window.FvAuth.getSession();
     if (!sb || !session) return;
 
     const id = card.dataset.placeId;
-    btn.disabled = true;
+    const name = card.querySelector('[data-field="name"]');
+    const label = name ? name.textContent.trim() : '';
+
+    // 사라질 카드에 포커스가 있으면 갈 곳을 먼저 정한다. 그냥 remove()하면
+    // 브라우저가 포커스를 body로 떨어뜨리고 되돌려주지 않아서, 키보드로 두 개를
+    // 지우려면 매번 목록 처음부터 Tab을 다시 해야 했다.
+    const hadFocus = card.contains(document.activeElement);
+    const nextFocus = hadFocus
+      ? card.nextElementSibling || card.previousElementSibling || byId('state-empty')
+      : null;
+
     // 낙관적으로 먼저 지운다 — saved-places.js의 toggle()과 같은 태도다.
     card.remove();
     maybeShowEmpty();
+
+    if (nextFocus) {
+      const target = nextFocus.querySelector('[data-remove]') || nextFocus;
+      // state-empty처럼 원래 포커스를 안 받는 요소로 옮길 때가 있다.
+      if (!target.hasAttribute('tabindex') && !target.matches('a, button, input, select, textarea')) {
+        target.setAttribute('tabindex', '-1');
+      }
+      target.focus();
+    }
+
+    // 성공에도 알린다. 카드가 소리 없이 사라지면 스크린리더 사용자는 눌린 건지
+    // 아닌지 알 방법이 없다 — 검색 쪽 담기와 달리 여기는 버튼 문구가 남지 않는다.
+    toast(label ? `${label}을(를) 담기 취소했습니다.` : '담기를 취소했습니다.');
 
     const { error } = await sb
       .from('saved_places')

@@ -161,7 +161,11 @@
     showError('');
     const submit = byId('auth-submit');
     if (submit) {
-      submit.disabled = true;
+      // disabled가 아니라 aria-disabled다. 포커스된 버튼이 disabled가 되면
+      // 브라우저가 포커스를 body로 옮기고 되살려도 돌려주지 않는다 — 실패했을 때
+      // #auth-error는 role="alert"로 낭독되지만, 정작 고쳐야 할 입력으로
+      // 되돌아갈 방법이 없어진다. 이중 제출은 위의 pending 플래그가 막는다.
+      submit.setAttribute('aria-disabled', 'true');
       submit.textContent = signup ? '가입하는 중…' : '로그인하는 중…';
     }
 
@@ -170,7 +174,7 @@
       : await window.FvAuth.signIn({ email, password });
 
     pending = false;
-    if (submit) submit.disabled = false;
+    if (submit) submit.removeAttribute('aria-disabled');
 
     if (!result.ok) {
       // setMode가 버튼 문구를 원래대로 돌려놓는다.

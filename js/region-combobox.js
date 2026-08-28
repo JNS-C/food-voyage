@@ -565,10 +565,29 @@
           }
           break;
 
-        case 'Tab':
+        case 'Tab': {
+          if (!open) break;
+
+          // 패널 안의 "최근 검색 전체 지우기"는 포커스 가능한 버튼인데, 여기서
+          // 무조건 닫으면 패널이 display:none이 되어 키보드로는 닿을 방법이
+          // 아예 없었다(WCAG 2.1.1). 마우스 전용 기능이었다.
+          //
+          // 그냥 닫지 않고 넘기는 것만으로는 부족하다 — #region-panel은 문서 끝에
+          // 있고 화면 위치만 JS가 계산해 얹으므로, 순차 Tab으로는 페이지를 거의
+          // 다 지나야 닿는다. 보이는 순서와 맞도록 포커스를 직접 옮긴다.
+          // 여기서 나가는 Tab은 onBlur가 받아 패널을 닫는다.
+          const box = panel();
+          const clearBtn = box && box.querySelector('[data-region-clear]');
+          if (clearBtn && !clearBtn.hidden && !event.shiftKey && activeIndex < 0) {
+            event.preventDefault();
+            clearBtn.focus();
+            break;
+          }
+
           // 확정하지 않고 닫는다. 탐색은 선택이 아니다.
-          if (open) close();
+          close();
           break;
+        }
 
         default:
           break;
