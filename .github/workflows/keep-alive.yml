@@ -1,0 +1,43 @@
+# Supabase 무료 플랜은 일정 기간 요청이 없으면 프로젝트를 일시 정지시킨다.
+# 3일에 한 번 profiles 테이블을 1행 조회해 DB 를 깨워 둔다.
+name: Supabase Keep Alive
+
+on:
+  schedule:
+    # 매월 1, 4, 7 ... 28, 31 일 06:00 UTC (KST 15:00). 간격이 3일을 넘지 않는다.
+    - cron: '0 6 */3 * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: profiles 1행 조회
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${SUPABASE_URL}" ] || [ -z "${SUPABASE_ANON_KEY}" ]; then
+            echo "::error::SUPABASE_URL / SUPABASE_ANON_KEY 시크릿이 비어 있다."
+            exit 1
+          fi
+
+          # 끝의 슬래시를 떼어 //rest 같은 경로가 생기지 않게 한다.
+          base="${SUPABASE_URL%/}"
+
+          status=$(curl -sS -o /tmp/keep-alive-body.txt -w '%{http_code}' \
+            --max-time 30 --retry 3 --retry-delay 10 --retry-connrefused \
+            "${base}/rest/v1/profiles?select=id&limit=1" \
+            -H "apikey: ${SUPABASE_ANON_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}")
+
+          echo "HTTP ${status}"
+          cat /tmp/keep-alive-body.txt
+
+          if [ "${status}" != "200" ]; then
+            echo "::error::Supabase 응답이 200 이 아니다 (HTTP ${status})."
+            exit 1
+          fi
