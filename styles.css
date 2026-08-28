@@ -625,8 +625,11 @@ a, button, input, [role="button"] {
   #map-col { display: contents; }
 
   #map-panel { display: none; }
-  /* 전체 화면 오버레이. z-20 — 필터 바(30)·상단 바(30) 아래라
-     지도 위에서도 검색·칩을 그대로 조작할 수 있다. */
+  /* 전체 화면 오버레이. z-20 — 상단 바(30) 아래다.
+     필터 바는 640px 이상에서만 sticky·z-30이라(위 min-width:640px 블록) 그 구간에서만
+     오버레이 위로 올라온다. 즉 640~1023px에서는 지도 위에서도 검색·칩을 조작할 수 있고,
+     640px 미만에서는 필터 바가 static이라 오버레이에 덮인다. 이 차이가 히스토리
+     처리에 영향을 준다 — js/search.js의 popstate 주석을 함께 볼 것. */
   #map-panel[data-open="true"] {
     display: block;
     position: fixed;

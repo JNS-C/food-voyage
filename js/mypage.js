@@ -215,9 +215,22 @@
     await load();
   }
 
+  /**
+   * init()이 던지면 화면이 state-loading에 그대로 멈춘다 — 사용자에게는 영원한
+   * 로딩으로 보이고 다시 시도할 통로도 없다. 실패는 state-error로 떨어뜨린다.
+   */
+  function start() {
+    Promise.resolve()
+      .then(init)
+      .catch((error) => {
+        console.error('[mypage]', error);
+        setState('error');
+      });
+  }
+
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init, { once: true });
+    document.addEventListener('DOMContentLoaded', start, { once: true });
   } else {
-    init();
+    start();
   }
 })();

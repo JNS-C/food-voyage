@@ -406,7 +406,19 @@
     if (toggle) toggle.addEventListener('click', () => setMapOpen(!mapOpen()));
 
     window.addEventListener('popstate', () => {
-      if (mapOpen()) setMapOpen(false, { fromPop: true });
+      if (!mapOpen()) return;
+      setMapOpen(false, { fromPop: true });
+
+      // back()이 되돌린 URL을 지금 화면의 검색으로 다시 맞춘다.
+      //
+      // 지도 위에서도 필터 바를 조작할 수 있다(styles.css의 오버레이 z-index 참조).
+      // 그렇게 재검색하면 syncUrl이 replaceState로 **지금 칸**의 URL만 갱신하는데,
+      // 닫기는 back()으로 그 칸을 걷어내므로 한 칸 전의 옛 쿼리가 주소창에 남는다.
+      // 화면은 새 결과인데 URL은 옛 검색을 가리키고, 그대로 새로고침·공유하면
+      // 다른 결과가 나온다. 여기서 되맞추는 게 가장 좁은 수정이다.
+      if (!lastSearchedRegion) return;
+      const input = byId('keyword-input');
+      syncUrl(lastSearchedRegion, input ? input.value.trim() : '', activeCategory());
     });
   }
 

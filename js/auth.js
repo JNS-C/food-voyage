@@ -180,9 +180,20 @@
         return;
       }
 
-      const { data } = await c.auth.getSession();
-      state.session = (data && data.session) || null;
-      state.profile = await loadProfile(state.session);
+      try {
+        const { data } = await c.auth.getSession();
+        state.session = (data && data.session) || null;
+        state.profile = await loadProfile(state.session);
+      } catch (error) {
+        // 여기서 던지면 readyPromise가 **rejected로 캐시되어** 이후 모든 ready()가
+        // 같은 거부를 돌려준다. 소비처(js/mypage.js·js/login.js)는 await만 하므로
+        // 마이페이지가 state-loading에 영구히 갇힌다 — state-error로도 못 간다.
+        // 세션을 못 읽은 것은 "로그아웃 상태"로 다루고 화면은 계속 진행시킨다.
+        console.warn('[auth] 세션 복원 실패', error);
+        state.session = null;
+        state.profile = null;
+      }
+
       state.resolved = true;
       emit();
 
@@ -191,7 +202,14 @@
         const changedUser = userId(state.session) !== userId(next);
         state.session = next;
         // TOKEN_REFRESHED는 같은 사람이다. 프로필을 다시 읽을 이유가 없다.
-        if (changedUser) state.profile = await loadProfile(next);
+        if (changedUser) {
+          try {
+            state.profile = await loadProfile(next);
+          } catch (error) {
+            console.warn('[auth] 프로필 조회 실패', error);
+            state.profile = null;
+          }
+        }
         emit();
       });
     })();
