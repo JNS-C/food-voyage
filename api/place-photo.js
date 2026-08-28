@@ -64,7 +64,7 @@ const FIELD_MASK = 'places.id,places.photos,places.location,places.displayName';
 const SEARCH_URL = 'https://places.googleapis.com/v1/places:searchText';
 
 /**
- * 웜 인스턴스가 공짜로 재사용하는 조회 결과. kakaoId → { photoName } | null.
+ * 웜 인스턴스가 공짜로 재사용하는 조회 결과. warmKey(query) → { photoName } | null.
  * 기회주의적일 뿐이라 여기 없다고 해서 달라지는 건 없다 — 진짜 캐시는 클라이언트에 있다.
  * 콜드 스타트마다 비므로 상한만 걸어 두고 만료는 두지 않는다.
  */
@@ -72,6 +72,22 @@ const warmCache = new Map();
 const WARM_MAX = 500;
 
 /* ── 유틸 ─────────────────────────────────────────────── */
+
+/**
+ * warmCache 키. id만으로는 부족하다 — 매칭 결과를 좌우하는 이름·좌표가 전부
+ * 같은 요청 본문에서 오므로, 그것들이 다르면 다른 캐시 항목이어야 한다.
+ * 좌표는 소수 3자리(약 100m)로 뭉갠다. MAX_DISTANCE_M이 200m라 그 아래의
+ * 흔들림은 어차피 같은 결과로 수렴하고, 그대로 쓰면 부동소수 끝자리 때문에
+ * 캐시가 사실상 안 맞는다.
+ */
+function warmKey(query) {
+  return [
+    query.id,
+    query.name,
+    query.lat.toFixed(3),
+    query.lng.toFixed(3),
+  ].join('|');
+}
 
 /** 두 좌표 사이 거리(미터). */
 function distanceMeters(lat1, lng1, lat2, lng2) {
@@ -448,9 +464,16 @@ module.exports = async function handler(req, res) {
     if (!query.searchable) return null;
 
     // ② 웜 인스턴스가 이미 찾아 둔 게 있으면 재사용한다. 기회주의적일 뿐이다.
+    //
+    // 키가 id 하나면 안 된다. 매칭에 실제로 쓰이는 이름·좌표도 같은 요청 본문에서
+    // 오므로, 실제 카카오 id에 아무 이름·좌표나 붙여 한 번 보내면 그 결과가
+    // 인스턴스가 사는 동안 정상 사용자에게도 나간다 — found가 null이어도 저장하니
+    // "사진 없음"으로 고정시키는 것도 된다. 매칭 입력 전체를 키로 잡는다.
+    const cacheKey = warmKey(query);
+
     let found;
-    if (warmCache.has(query.id)) {
-      found = warmCache.get(query.id);
+    if (warmCache.has(cacheKey)) {
+      found = warmCache.get(cacheKey);
     } else {
       found = await findPhoto(query, key);
       if (warmCache.size >= WARM_MAX) {
@@ -458,7 +481,7 @@ module.exports = async function handler(req, res) {
         // (js/kakao-places.js의 coordCache와 같은 관용구).
         warmCache.delete(warmCache.keys().next().value);
       }
-      warmCache.set(query.id, found);
+      warmCache.set(cacheKey, found);
     }
     if (!found) return null;
 
