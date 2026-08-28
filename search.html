@@ -147,8 +147,12 @@
              숨기고(값은 유지 — GET 폴백과 콤보박스 mount가 무손상) 이 칩을 보여준다.
              라벨 버튼 = 편집 모드 복귀, × = 거점 해제. 유리 그룹 안이라 .lg-inner다. -->
         <div id="anchor-pill" class="lg-inner flex min-w-0 flex-1 items-center pl-1 pr-1 sm:min-w-[168px] sm:flex-none" hidden>
+          <!-- min-h-11: 높이 클래스가 없으면 부모의 items-center 때문에 텍스트
+               높이(약 25px)로 줄어든다. 44px pill 안에서 편집이 25px만 받고
+               나머지가 죽은 영역이 되는데, 바로 옆 44px 버튼이 거점 해제라
+               좁은 화면에서 오탭이 삭제로 이어진다. -->
           <button type="button" data-anchor-edit
-                  class="min-w-0 flex-1 truncate px-3 text-left text-body"></button>
+                  class="min-h-11 min-w-0 flex-1 truncate px-3 text-left text-body"></button>
           <button type="button" data-anchor-clear aria-label="거점 해제"
                   class="flex h-11 w-11 shrink-0 items-center justify-center text-body">×</button>
         </div>
@@ -334,7 +338,10 @@
         <!-- 담김 수 배지(8/24 인기순). 닻=담김 어휘는 TOP5·담기 버튼과 같다.
              황동은 아이콘에만(비텍스트 3:1 통과), 숫자는 ink-72. 0명이면 logic이 숨긴다 -->
         <span data-field="savecount" class="flex shrink-0 items-center gap-1 rounded-full bg-divider-soft px-2 py-0.5 text-fine font-semibold tabular-nums text-ink-72" hidden>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#B86B32"
+          <!-- 색은 토큰으로 받는다(DESIGN Iteration Guide 3 — 인라인 hex 금지).
+               부모가 text-ink-72라 SVG에 text-accent를 직접 준다. -->
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+               class="text-accent" stroke="currentColor"
                stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <circle cx="12" cy="4.1" r="2.3"></circle>
             <path d="M12 6.4V21"></path>

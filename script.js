@@ -80,18 +80,25 @@ function renderAnchorSingle(willRevisit) {
 async function renderTop5() {
   const list = document.getElementById('top5-list');
   const empty = document.getElementById('top5-empty');
+  const failed = document.getElementById('top5-error');
   if (!list || !empty) return;
 
-  // Supabase 설정이 비어 있어도 랜딩은 죽지 않는다. 빈 상태 문구로만 내려간다.
+  /** 실패는 빈 상태로 흘리지 않는다 — 아래 setForYouState와 같은 태도다. */
+  const showError = () => {
+    if (failed) failed.hidden = false;
+    else empty.hidden = false;   // 옛 마크업 폴백
+  };
+
+  // Supabase 설정이 비어 있는 것은 "담긴 가게가 없다"가 아니라 설정 문제다.
   if (!window.FvAuth || !window.FvAuth.isConfigured()) {
-    empty.hidden = false;
+    showError();
     return;
   }
 
   const { data, error } = await window.FvAuth.db.rpc(RPC_TOP_PLACES, { limit_count: 5 });
   if (error) {
     console.warn('[top5]', error.message);
-    empty.hidden = false;
+    showError();
     return;
   }
 

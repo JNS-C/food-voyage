@@ -763,7 +763,9 @@ a, button, input, [role="button"] {
 .map-popover-link {
   display: inline-flex;
   align-items: center;
-  min-height: 36px;
+  /* 36px이었다. 지도 위 팝오버는 손가락으로만 쓰는 자리라 여기서 규율을
+     깎을 이유가 가장 적다. --lg-target을 그대로 쓴다. */
+  min-height: var(--lg-target);
   margin-top: 6px;
   font-size: 14px;
   letter-spacing: -0.1px;

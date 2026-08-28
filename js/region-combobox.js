@@ -357,9 +357,16 @@
       if (!open) bindViewport(true);
       open = true;
       box.hidden = false;
-      // 항목이 있을 때만 펼쳐진 것으로 알린다. 고를 게 없는데 expanded를 켜면
-      // 스크린리더가 빈 목록으로 안내한다.
-      field.setAttribute('aria-expanded', has ? 'true' : 'false');
+
+      // aria-expanded는 box.hidden과 항상 같이 간다. APG는 "팝업이 표시되면
+      // 반드시 true"라고 못 박는다.
+      //
+      // 예전에는 항목이 있을 때만 true였다 — 고를 게 없는데 켜면 스크린리더가
+      // 빈 목록으로 안내한다는 이유였는데, 그러면 패널이 화면을 덮고 있는데도
+      // 접힌 것으로 읽히는 불일치가 생긴다. 그리고 그 걱정은 이미
+      // aria-live가 "결과가 없습니다"로 해결하고 있다 — 두 번 방어하면서
+      // 규격을 깨고 있었다.
+      field.setAttribute('aria-expanded', 'true');
       positionPanel();
       setActive(-1);
     }
